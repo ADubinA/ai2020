@@ -1,6 +1,9 @@
 import networkx as nx
+import matplotlib.pyplot as plt
+from scipy.ndimage import imread
+from matplotlib.offsetbox import AnnotationBbox,OffsetImage
 class Agent:
-    def __init__(self):
+    def __init__(self, starting_node):
         """
         behavior (function of how to act on the graph)
         knowledge (what the agent know about the world)
@@ -8,9 +11,10 @@ class Agent:
         """
         self.states = ["no_op", "terminated", "ready"]
         self.active_state = "ready"
-        self.location = None
+        self.location = starting_node  # this is a node from networtx graph
         self.local_environment = nx.Graph()
         self.carry_num = 0
+        self.icon = None
 
     def set_environment(self,  global_env):
         pass
@@ -18,10 +22,30 @@ class Agent:
     def act(self,  global_env):
         pass
 
+    def get_current_location(self):
+        return self.location
 
-class User(Agent):
-    def __init__(self):
-        super().__init__()
+    def get_anotation_box(self,xy,ax):
+
+        imagebox = OffsetImage(self.icon, zoom=0.04, cmap='gray')
+        imagebox.image.axes = ax
+        ab = AnnotationBbox(imagebox, xy,
+                            xybox=(20, 20),
+                            xycoords='data',
+                            boxcoords="offset points",
+                            pad=0,
+
+                            arrowprops=dict(
+                                arrowstyle="->",
+                                connectionstyle="angle,angleA=0,angleB=90,rad=3")
+                            )
+
+        ax.add_artist(ab)
+
+class Pc(Agent):
+    def __init__(self, starting_node):
+        super().__init__(starting_node)
+        self.icon = plt.imread("icons/monkey.png")
 
     def set_environment(self, global_env):
         super().set_environment(global_env)
@@ -43,8 +67,9 @@ class User(Agent):
 
 
 class Greedy(Agent):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, starting_node):
+        super().__init__(starting_node)
+        self.icon = plt.imread("icons/brainstorm.png")
 
     def set_environment(self, global_env):
         super().set_environment(global_env)
@@ -65,10 +90,13 @@ class Greedy(Agent):
         raise NotImplemented()
 
 
+
+
 class Annihilator(Agent):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, starting_node):
+        super().__init__(starting_node)
         self.wait_time = 666
+        self.icon = plt.imread("icons/thunder-skull.png")
 
     def set_environment(self, global_env):
         super().set_environment(global_env)
