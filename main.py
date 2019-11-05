@@ -21,8 +21,8 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
     while iteration < max_tick:
         env.display()
 
+        env.tick()
         time.sleep(seconds_per_tick)
-        # env.tick()
 
         iteration += 1
 

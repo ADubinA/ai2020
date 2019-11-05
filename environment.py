@@ -26,6 +26,12 @@ class Environment:
             vertex_name = self.graph.number_of_nodes() + 1
             kwargs["name"] = vertex_name
 
+        if "deadline" not in kwargs.keys():
+            logging.warning("no deadline has been added to the edge {}, will assume weight 10".format(vertex_name))
+            kwargs["deadline"] = 10
+
+
+
         self.graph.add_node(vertex_name, **kwargs)
 
     def add_edge(self, start, end, **kwargs):
@@ -47,8 +53,16 @@ class Environment:
         :return: None
         """
 
-        self.time = self.time + 1
-        raise NotImplemented()
+        self._update_environment()
+
+        # update the world for every agent
+        for agent in self.agents:
+            agent.set_environment(self)
+
+        # each agent act on the world at his turn
+        for agent in self.agents:
+            agent.act(self)
+
 
     def display(self, save_dir=None):
         """
@@ -88,7 +102,7 @@ class Environment:
         edge_labels = dict([((u, v,), d['weight']) for u, v, d in self.graph.edges(data=True)])
         nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=edge_labels)
 
-        self._print_node_data(ax, pos, "name", 1)
+        self._print_node_data(ax, pos, "deadline", 1)
 
         self._print_agents_data(ax, pos)
         # draw the rest of the graph
@@ -99,6 +113,13 @@ class Environment:
             plt.show()
 
         # raise NotImplemented()
+
+    def _update_environment(self):
+        self.time = self.time + 1
+        for node in self.graph.nodes:
+            if self.graph.node[node]["deadline"] >0:
+                self.graph.node[node]["deadline"] -= 1
+
     def _print_node_data(self, ax, pos, dict_key, spacing):
 
         pos_attrs = {}
@@ -118,7 +139,15 @@ class Environment:
             agent_node = agent.get_current_location()
             # xy = pos[agent_node.name]
             xy = pos[agent_node]
-            agent.get_anotation_box(xy,ax)
+            agent.get_anotation_box(xy, ax)
+
+    def get_node_neighborhood(self, node_key):
+        """
+        return a list of the neighbors to the node
+        :param node_key: (hashable) the key to the node
+        :return:
+        """
+        return self.graph[node_key]
 
     def save(self, save_dir):
         """

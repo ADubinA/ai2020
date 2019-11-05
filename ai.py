@@ -11,7 +11,7 @@ class Agent:
         """
         self.states = ["no_op", "terminated", "ready"]
         self.active_state = "ready"
-        self.location = starting_node  # this is a node from networtx graph
+        self.location = starting_node  # this is a key to a node in local_environment
         self.local_environment = nx.Graph()
         self.carry_num = 0
         self.icon = None
@@ -62,7 +62,22 @@ class Pc(Agent):
         # validate input
         # update location and global_env
 
-        raise NotImplemented()
+        print("Pc user is active, please insert an action:")
+        print("numbers: (1,2,3,...) will move the Pc if an edge allow it")
+        options = self.local_environment.get_node_neighborhood(self.location)
+
+        input_ok = False
+        while not input_ok:
+            try:
+                user_input = int(input())
+                if user_input in options.keys():
+                    input_ok = True
+                else:
+                    print("{} is not a neighbor to {}".format(user_input, self.location))
+
+            except ValueError as e:
+                print(" not a valid input, try again with numbers")
+        self.location = user_input
 
 
 
