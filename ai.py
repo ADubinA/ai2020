@@ -1,8 +1,9 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from scipy.ndimage import imread
+
 from matplotlib.offsetbox import AnnotationBbox,OffsetImage
-# from environment import Environment
+
+
 class Agent:
     def __init__(self, starting_node):
         """
@@ -57,7 +58,7 @@ class Agent:
         :return: a list of passable nodes (by name)
         """
         nodes = self.local_environment.get_node_neighborhood(self.location)
-        return [node for node in nodes if self.local_environment.graph.node[node]["deadline"] > 0]
+        return [node for node in nodes if self.local_environment.graph.nodes[node]["deadline"] > 0]
 
 class Pc(Agent):
     def __init__(self, starting_node):
@@ -90,6 +91,7 @@ class Pc(Agent):
             return
 
         input_ok = False
+
         while not input_ok:
             try:
                 user_input = int(input())

@@ -117,8 +117,8 @@ class Environment:
     def _update_environment(self):
         self.time = self.time + 1
         for node in self.graph.nodes:
-            if self.graph.node[node]["deadline"] >0:
-                self.graph.node[node]["deadline"] -= 1
+            if self.graph.nodes[node]["deadline"] > 0:
+                self.graph.nodes[node]["deadline"] -= 1
 
     def _print_node_data(self, ax, pos, dict_key, spacing):
 
