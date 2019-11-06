@@ -62,13 +62,31 @@ class Agent:
         """
         Calculates the nodes which the agent can go to.
         For now, will only allow to traverse nodes that :
-            1. Have an edge between them.
-            2. The destination node have deadline > 0
+            1. Have an edge between them
+            2. The edge is unblocked
+            3. The destination node have deadline > 0
         :return: a list of passable nodes (by name)
         """
         nodes = self.local_environment.get_node_neighborhood(self.location)
-        return [node for node in nodes if self.local_environment.graph.nodes[node]["deadline"] > 0]
+        potential_nodes = [node for node in nodes if self.local_environment.graph.nodes[node]["deadline"] > 0]
+        edges_to_potential_nodes = self.local_environment.graph.edges(self.location)
 
+        for single_edge in edges_to_potential_nodes:
+            #TODO Verify it still works on a directed graph
+            if (self.local_environment.graph[single_edge[0]][single_edge[1]]["blocked"] == True):
+                potential_nodes.remove(single_edge[1])
+        return potential_nodes
+
+    def get_min_edge(self, edges_list):
+        curr_min = 2000000000
+        edge_to_ret = ["no_edge"]
+        for single_edge in edges_list:
+            if (self.local_environment.graph[single_edge[0]][single_edge[1]]["weight"] < curr_min):
+                if (self.local_environment.graph[single_edge[0]][single_edge[1]]["blocked"] == False):
+                    curr_min = self.local_environment.graph[single_edge[0]][single_edge[1]]["weight"]
+                    edge_to_ret = single_edge
+
+        return edge_to_ret
 
 class Pc(Agent):
     def __init__(self,name,  starting_node):
@@ -212,17 +230,29 @@ class Greedy(Agent):
 class Annihilator(Agent):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
-        self.wait_time = 2
+        self.wait_time = 0 #TODO change wait time.
         self.icon = plt.imread("icons/thunder-skull.png")
         self.states["annihilate"] = self._act_annihilate
-        self.active_state = "no_op"
+        self.states["wait"] = self._act_wait
+        self.active_state = "wait"
+
     def set_environment(self, global_env):
         super().set_environment(global_env)
         self.local_environment = global_env
 
-    # def
+    def _act_annihilate(self, global_env):
+        min_edge = self.get_min_edge(self.local_environment.graph.edges(self.location))
+        print("destroyed edge: {}".format(min_edge))
+        global_env.graph[min_edge[0]][min_edge[1]]["blocked"] = True
+        new_min_edge = self.get_min_edge(self.local_environment.graph.edges(self.location))
+        if (new_min_edge[0] == "no_edge"):
+            print("no option for Agent {} to traverse and is terminated".format(self.name))
+            self.active_state = "terminated"
+            return
 
-    def _act_annihilate(self, gloval_env):
+        print("destroyer moved to edge: {}".format(new_min_edge[1]))
+        self.location = new_min_edge[1]
+
         """
         The vandal works as follows: it does wait_time no-ops,
         and then blocks the lowest-cost edge adjacent to its current vertex (takes 1 time unit).
@@ -231,4 +261,9 @@ class Annihilator(Agent):
         :param global_env:
         :return: None
         """
-        # if self.local_environment.time % self.wait_time == 0 & self.local_environment.time > 0:
+
+
+    def _act_wait(self, global_env):
+        if (global_env.time >= self.wait_time):
+            self.active_state = "annihilate"
+            self._act_annihilate(global_env)
