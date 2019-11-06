@@ -251,7 +251,6 @@ class Annihilator(Agent):
         print("destroyer moved to edge: {}".format(new_min_edge[1]))
         self.traverse_to_node(new_min_edge[1], global_env)
 
-
         """
         The vandal works as follows: it does wait_time no-ops,
         and then blocks the lowest-cost edge adjacent to its current vertex (takes 1 time unit).
