@@ -88,6 +88,15 @@ class Agent:
 
         return edge_to_ret
 
+    def traverse_to_node(self, node,  global_env):
+        """
+        will move the agent to the node.
+        :param node: (hashable) the name of the node
+        :param global_env:
+        :return:
+        """
+        self.location = node
+
 class Pc(Agent):
     def __init__(self,name,  starting_node):
         super().__init__(name, starting_node)
@@ -215,17 +224,6 @@ class Greedy(Agent):
         else:
             self._act_find(global_env, "people")
 
-    def traverse_to_node(self, node,  global_env):
-        """
-        will move the agent to the node.
-        :param node: (hashable) the name of the node
-        :param global_env:
-        :return:
-        """
-        self.location = node
-
-
-
 
 class Annihilator(Agent):
     def __init__(self, name, starting_node):
@@ -251,7 +249,8 @@ class Annihilator(Agent):
             return
 
         print("destroyer moved to edge: {}".format(new_min_edge[1]))
-        self.location = new_min_edge[1]
+        self.traverse_to_node(new_min_edge[1], global_env)
+
 
         """
         The vandal works as follows: it does wait_time no-ops,
