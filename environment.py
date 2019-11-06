@@ -12,7 +12,7 @@ class Environment:
         self.graph.add_nodes_from(parser_instance.vertex_list)
         self.graph.add_edges_from(parser_instance.edge_list)
         self.attributes = []
-        self.agents = [Pc(1)] # TODO make this a node not a number
+        self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
         self.time = 0
         # raise NotImplemented()
 

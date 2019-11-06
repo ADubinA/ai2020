@@ -24,7 +24,7 @@ class Parser:
     def create_edges(self, edge_dict):
         edge_arr = []
         for entry in edge_dict:
-            edge_arr.append(self.handle_single_edge(entry))
+            edge_arr.append(self.handle_single_edge(enftry))
         return edge_arr
 
     def handle_single_edge(self, single_entry):
