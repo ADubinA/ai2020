@@ -9,8 +9,12 @@ class Environment:
         parser_instance = Parser("test_graph.json")
         # here we insert the parser to the vars
         self.graph = nx.Graph()
-        self.graph.add_nodes_from(parser_instance.vertex_list)
-        self.graph.add_edges_from(parser_instance.edge_list)
+        for vertex in parser_instance.vertex_list:
+            self.add_vertex(**vertex)
+        for edge in parser_instance.edge_list:
+            self.add_edge(edge["from"], edge["to"], **edge)
+
+
         self.attributes = []
         self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
         self.time = 0
@@ -119,6 +123,7 @@ class Environment:
     def _update_environment(self):
         self.time = self.time + 1
         for node in self.graph.nodes:
+            print(self.graph.nodes[node]["deadline"])
             if self.graph.nodes[node]["deadline"] > 0:
                 self.graph.nodes[node]["deadline"] -= 1
 

@@ -11,7 +11,7 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
         env.display()
 
         env.tick()
-        time.sleep(seconds_per_tick + 50)
+        time.sleep(seconds_per_tick)
 
         iteration += 1
 
