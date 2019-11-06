@@ -7,3 +7,6 @@ TODO  06/11/19:
 3. Break ties in a consistent way.
 4. Add a slightly more robust graph.
 5. Test the s*** out of it.
+
+TODO 06/11/19
+6. IMPORTANT: Ask if we need to solve destroyer/helpful agents interaction -> meaning that if a road the greedy agent was going to use is destroyed by the annihilator, the greedy agent should terminate.
