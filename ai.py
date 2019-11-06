@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 from matplotlib.offsetbox import AnnotationBbox,OffsetImage
-
+from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
 
 class Agent:
     def __init__(self, name,  starting_node):
@@ -101,7 +101,7 @@ class Pc(Agent):
             return
 
         input_ok = False
-
+        user_input = None
         while not input_ok:
             try:
                 user_input = int(input())
@@ -121,12 +121,48 @@ class Greedy(Agent):
     def __init__(self,name, starting_node):
         super().__init__(name, starting_node)
         self.icon = plt.imread("icons/brainstorm.png")
+        self.states["find_people"] = self._act_find_people
+        self.states["find_shelter"] = self._act_find_shelter
+        self.active_state = "find_people"
+        self.people_carried = 0
 
     def set_environment(self, global_env):
         super().set_environment(global_env)
         self.local_environment = global_env
 
-    def act(self,  global_env):
+    def _act_find(self, global_env, find_by):
+
+        if find_by == "people":
+            search_attribute = "people"
+        else:
+            search_attribute = "shelter"
+        # filter nodes that have only people in them ( >0 )
+        node_options = self.local_environment.graph.nodes
+        node_options = [node for node, data in node_options.items() if data[search_attribute] > 0]
+
+        # terminate if there is no option
+        if len(node_options) == 0:
+            self.active_state = "terminated"
+            self.act(global_env)
+            return
+
+        # I choose here a random node, but other options will be better and slower
+        best_path_length = float("inf")
+        best_path = None
+        for node_option in node_options:
+
+            # find the shortest path from the filtered ones
+            shorest_path = shortest_path_algorithm(self.local_environment.graph, self.location, node_option,
+                                                   weight="weight")
+            if len(shorest_path) < best_path_length:
+                best_path_length = len(shorest_path)
+                best_path = shorest_path
+
+        # move to the next path
+        self.traverse_to_node(best_path[1], global_env)
+        print()
+
+    def _act_find_people(self, global_env):
         """
         the agent should compute the shortest currently unblocked path to the next vertex with people to be rescued,
         or to a shelter if it is carrying people, and try to follow it. If there is no such path, do terminate.
@@ -134,11 +170,41 @@ class Greedy(Agent):
         :param global_env:
         :return: None
         """
-        # if carrying people find closest path to the shelter
+        # if there are people in this node
+        if self.local_environment.get_attr(self.location,"people") > 0:
+            print("print")
+            # pickup people
+            self.people_carried = global_env.get_attr(self.location, "people")
+            global_env.change_attr(self.location, "people", 0)
+            self.active_state = "find_shelter"
+            self.act(global_env)
 
-        # if not find closest people
+        else:
+            self._act_find(global_env, "people")
 
-        raise NotImplemented()
+    def _act_find_shelter(self, global_env):
+
+        # if the current node is a shelter
+        if self.local_environment.get_attr(self.location, "shelter") > 0:
+
+            # remove people into the shelter #TODO will not add people the shelter
+            self.people_carried = 0
+            global_env.change_attr(self.location, "people", 0)
+
+            self.active_state = "find_people"
+            self.act(global_env)
+
+        else:
+            self._act_find(global_env, "people")
+
+    def traverse_to_node(self, node,  global_env):
+        """
+        will move the agent to the node.
+        :param node: (hashable) the name of the node
+        :param global_env:
+        :return:
+        """
+        self.location = node
 
 
 
@@ -153,6 +219,8 @@ class Annihilator(Agent):
     def set_environment(self, global_env):
         super().set_environment(global_env)
         self.local_environment = global_env
+
+    # def
 
     def _act_annihilate(self, gloval_env):
         """

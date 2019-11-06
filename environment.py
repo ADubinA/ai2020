@@ -2,7 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import logging
 from parser import Parser
-from ai import Pc
+from ai import Pc, Greedy
 
 class Environment:
     def __init__(self, file_name):
@@ -16,7 +16,7 @@ class Environment:
 
 
         self.attributes = []
-        self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
+        self.agents = [Greedy("ai 1", 1)]  # TODO make this a node not a number
         self.time = 0
         # raise NotImplemented()
 
@@ -52,6 +52,24 @@ class Environment:
             kwargs["weight"] = 1
 
         self.graph.add_edge(start, end, **kwargs)
+    def change_attr(self,node,attr,value):
+        """
+        change the attribute of the node to the value
+        :param node: (hashable) key to the node
+        :param attr: (hashable) key to the attribute
+        :param value: value to the attribute
+        :return: None
+        """
+        self.graph.nodes[node][attr] = value
+
+    def get_attr(self,node,attr):
+        """
+        get the attribute of the node to the value
+        :param node: (hashable) key to the node
+        :param attr: (hashable) key to the attribute
+        :return: value to the attribute of the node
+        """
+        return self.graph.nodes[node][attr]
 
     def tick(self):
         """
@@ -59,7 +77,7 @@ class Environment:
         :return: None
         """
 
-        self._update_environment()
+
 
         # update the world for every agent
         for agent in self.agents:
@@ -69,6 +87,7 @@ class Environment:
         for agent in self.agents:
             agent.act(self)
 
+        self._update_environment()
 
     def display(self, save_dir=None):
         """
@@ -108,7 +127,7 @@ class Environment:
         edge_labels = dict([((u, v,), d['weight']) for u, v, d in self.graph.edges(data=True)])
         nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=edge_labels)
 
-        self._print_node_data(ax, pos, "deadline", 1)
+        self._print_node_data(ax, pos, "people", 1)
 
         self._print_agents_data(ax, pos)
         # draw the rest of the graph
