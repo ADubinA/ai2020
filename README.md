@@ -1,7 +1,7 @@
 # ai2020
 github for the ai2020 bgu course 
 
-TODO:
+TODO  06/11/19:
 1. Add a travel time function that will be used by all agents.
 2. Add a score evaluation once all agents were terminated.
 3. Break ties in a consistent way.
