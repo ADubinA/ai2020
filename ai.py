@@ -2,6 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from scipy.ndimage import imread
 from matplotlib.offsetbox import AnnotationBbox,OffsetImage
+# from environment import Environment
 class Agent:
     def __init__(self, starting_node):
         """
@@ -12,7 +13,7 @@ class Agent:
         self.states = ["no_op", "terminated", "ready"]
         self.active_state = "ready"
         self.location = starting_node  # this is a key to a node in local_environment
-        self.local_environment = nx.Graph()
+        self.local_environment = None
         self.carry_num = 0
         self.icon = None
 
@@ -25,8 +26,13 @@ class Agent:
     def get_current_location(self):
         return self.location
 
-    def get_anotation_box(self,xy,ax):
-
+    def get_annotation_box(self, xy, ax):
+        """
+        adds an annotation box with the agent icon on the ax
+        :param xy: coordinates of the node in the screen
+        :param ax: axis from plt
+        :return: None
+        """
         imagebox = OffsetImage(self.icon, zoom=0.04, cmap='gray')
         imagebox.image.axes = ax
         ab = AnnotationBbox(imagebox, xy,
@@ -41,6 +47,17 @@ class Agent:
                             )
 
         ax.add_artist(ab)
+
+    def _get_traversable_nodes(self):
+        """
+        Calculates the nodes which the agent can go to.
+        For now, will only allow to traverse nodes that :
+            1. Have an edge between them.
+            2. The destination node have deadline>0
+        :return: a list of passable nodes (by name)
+        """
+        nodes = self.local_environment.get_node_neighborhood(self.location)
+        return [node for node in nodes if self.local_environment.graph.node[node]["deadline"] > 0]
 
 class Pc(Agent):
     def __init__(self, starting_node):
@@ -61,16 +78,22 @@ class Pc(Agent):
         # get input from user
         # validate input
         # update location and global_env
+        if self.active_state == "terminated":
+            return
 
         print("Pc user is active, please insert an action:")
         print("numbers: (1,2,3,...) will move the Pc if an edge allow it")
-        options = self.local_environment.get_node_neighborhood(self.location)
+        options = self._get_traversable_nodes()
+        if len(options) == 0:
+            print("no option for Agent {} to traverse and is terminated".format("Pc"))
+            self.active_state = "terminated"
+            return
 
         input_ok = False
         while not input_ok:
             try:
                 user_input = int(input())
-                if user_input in options.keys():
+                if user_input in options:
                     input_ok = True
                 else:
                     print("{} is not a neighbor to {}".format(user_input, self.location))

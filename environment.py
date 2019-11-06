@@ -1,7 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import logging
-import ai
+from ai import Pc
 
 class Environment:
     def __init__(self, file_name):
@@ -10,7 +10,7 @@ class Environment:
 
         self.graph = nx.Graph()
         self.attributes = []
-        self.agents = [ai.Pc(1)] # TODO make this a node not a number
+        self.agents = [Pc(1)] # TODO make this a node not a number
         self.time = 0
         # raise NotImplemented()
 
@@ -28,7 +28,7 @@ class Environment:
 
         if "deadline" not in kwargs.keys():
             logging.warning("no deadline has been added to the edge {}, will assume weight 10".format(vertex_name))
-            kwargs["deadline"] = 10
+            kwargs["deadline"] = 2
 
 
 
@@ -139,7 +139,7 @@ class Environment:
             agent_node = agent.get_current_location()
             # xy = pos[agent_node.name]
             xy = pos[agent_node]
-            agent.get_anotation_box(xy, ax)
+            agent.get_annotation_box(xy, ax)
 
     def get_node_neighborhood(self, node_key):
         """
