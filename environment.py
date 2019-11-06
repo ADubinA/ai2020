@@ -10,7 +10,7 @@ class Environment:
 
         self.graph = nx.Graph()
         self.attributes = []
-        self.agents = [Pc(1)] # TODO make this a node not a number
+        self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
         self.time = 0
         # raise NotImplemented()
 
