@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import logging
 from parser import Parser
 from ai import Pc
+from ai import Annihilator
 
 class Environment:
     def __init__(self, file_name):
@@ -16,7 +17,8 @@ class Environment:
 
 
         self.attributes = []
-        self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
+        #self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
+        self.agents = [Annihilator("Anna frank 1", 3)]
         self.time = 0
         # raise NotImplemented()
 
