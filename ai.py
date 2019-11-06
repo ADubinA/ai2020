@@ -54,11 +54,12 @@ class Agent:
         Calculates the nodes which the agent can go to.
         For now, will only allow to traverse nodes that :
             1. Have an edge between them.
-            2. The destination node have deadline>0
+            2. The destination node have deadline > 0
         :return: a list of passable nodes (by name)
         """
         nodes = self.local_environment.get_node_neighborhood(self.location)
         return [node for node in nodes if self.local_environment.graph.nodes[node]["deadline"] > 0]
+
 
 class Pc(Agent):
     def __init__(self, starting_node):
