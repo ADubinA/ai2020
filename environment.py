@@ -4,21 +4,22 @@ import logging
 from parser import Parser
 from ai import Pc
 from ai import Annihilator
+from ai import Greedy
 
 class Environment:
     def __init__(self, file_name):
         parser_instance = Parser("test_graph.json")
+        active_agents = 1 ##TODO update this in a concise way
         # here we insert the parser to the vars
         self.graph = nx.Graph()
         for vertex in parser_instance.vertex_list:
             self.add_vertex(**vertex)
         for edge in parser_instance.edge_list:
             self.add_edge(edge["from"], edge["to"], **edge)
-
-
         self.attributes = []
         #self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
-        self.agents = [Annihilator("Anna frank 1", 3)]
+        self.agents = [Greedy("Greed 1", 1)]
+        #self.agents = [Annihilator("Anna frank 1", 3)]
         self.time = 0
         # raise NotImplemented()
 
@@ -78,9 +79,6 @@ class Environment:
         calculate the next turn in the environment
         :return: None
         """
-
-
-
         # update the world for every agent
         for agent in self.agents:
             agent.set_environment(self)
@@ -147,6 +145,11 @@ class Environment:
             print(self.graph.nodes[node]["deadline"])
             if self.graph.nodes[node]["deadline"] > 0:
                 self.graph.nodes[node]["deadline"] -= 1
+        """for agent in self.agents:
+            if (agent.active_state == "terminated"):
+                self.active_agents -= 1"""
+
+
 
     def _print_node_data(self, ax, pos, dict_key, spacing):
 
@@ -168,6 +171,8 @@ class Environment:
             # xy = pos[agent_node.name]
             xy = pos[agent_node]
             agent.get_annotation_box(xy, ax)
+            if (agent.__getattribute__("score") != None):
+                print("Current agent score is: {}".format(agent.score))
 
     def get_node_neighborhood(self, node_key):
         """

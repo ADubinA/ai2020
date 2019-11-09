@@ -18,6 +18,8 @@ class Agent:
         self.local_environment = None
         self.carry_num = 0
         self.icon = None
+        self.time_remaining_to_dest = 0
+        self.destination = 0
 
     def set_environment(self,  global_env):
         pass
@@ -88,6 +90,19 @@ class Agent:
 
         return edge_to_ret
 
+class Pc(Agent):
+    def __init__(self,name,  starting_node):
+        super().__init__(name, starting_node)
+        self.icon = plt.imread("icons/monkey.png")
+        self.states["user_input"] = self._act_user_input
+        self.states["traversing"] = self._act_traversing
+        self.active_state = "user_input"
+        self.score = 0
+
+    def set_environment(self, global_env):
+        super().set_environment(global_env)
+        self.local_environment = global_env
+
     def traverse_to_node(self, node,  global_env):
         """
         will move the agent to the node.
@@ -95,18 +110,18 @@ class Agent:
         :param global_env:
         :return:
         """
-        self.location = node
+        self.active_state = "traversing"
+        self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
+        self.destination = node
 
-class Pc(Agent):
-    def __init__(self,name,  starting_node):
-        super().__init__(name, starting_node)
-        self.icon = plt.imread("icons/monkey.png")
-        self.states["user_input"] = self._act_user_input
-        self.active_state = "user_input"
+    def _act_traversing(self, global_env):
+        print("remaining time: {}".format(self.time_remaining_to_dest))
+        self.time_remaining_to_dest -= 1
+        if (self.time_remaining_to_dest <= 0):
+            self.location = self.destination
+            self.active_state = "user_input"
+            self.act(global_env)
 
-    def set_environment(self, global_env):
-        super().set_environment(global_env)
-        self.local_environment = global_env
 
     def _act_user_input(self, global_env):
         """
@@ -139,7 +154,7 @@ class Pc(Agent):
 
             except ValueError as e:
                 print(" not a valid input, try again with numbers")
-        self.location = user_input
+        self.traverse_to_node(user_input, global_env)
 
 
 
@@ -150,15 +165,39 @@ class Greedy(Agent):
         self.icon = plt.imread("icons/brainstorm.png")
         self.states["find_people"] = self._act_find_people
         self.states["find_shelter"] = self._act_find_shelter
+        self.states["traversing"] = self._act_traversing
         self.active_state = "find_people"
         self.people_carried = 0
+        self.score = 0
+
 
     def set_environment(self, global_env):
         super().set_environment(global_env)
         self.local_environment = global_env
 
-    def _act_find(self, global_env, find_by):
+    def traverse_to_node(self, node,  global_env):
+        """
+        will move the agent to the node.
+        :param node: (hashable) the name of the node
+        :param global_env:
+        :return:
+        """
+        self.active_state = "traversing"
+        self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
+        self.destination = node
 
+    def _act_traversing(self, global_env):
+        self.time_remaining_to_dest -= 1
+        if (self.time_remaining_to_dest <= 0):
+            self.location = self.destination
+            if self.people_carried < 1:
+                self.active_state = "find_people"
+            else:
+                self.active_state = "find_shelter"
+            self.act(global_env)
+
+
+    def _act_find(self, global_env, find_by):
         if find_by == "people":
             search_attribute = "people"
         else:
@@ -170,6 +209,7 @@ class Greedy(Agent):
         # terminate if there is no option
         if len(node_options) == 0:
             self.active_state = "terminated"
+            self.score -= self.people_carried
             self.act(global_env)
             return
 
@@ -179,15 +219,14 @@ class Greedy(Agent):
         for node_option in node_options:
 
             # find the shortest path from the filtered ones
-            shorest_path = shortest_path_algorithm(self.local_environment.graph, self.location, node_option,
+            shortest_path = shortest_path_algorithm(self.local_environment.graph, self.location, node_option,
                                                    weight="weight")
-            if len(shorest_path) < best_path_length:
-                best_path_length = len(shorest_path)
-                best_path = shorest_path
+            if len(shortest_path) < best_path_length:
+                best_path_length = len(shortest_path)
+                best_path = shortest_path
 
         # move to the next path
         self.traverse_to_node(best_path[1], global_env)
-        print()
 
     def _act_find_people(self, global_env):
         """
@@ -198,10 +237,10 @@ class Greedy(Agent):
         :return: None
         """
         # if there are people in this node
-        if self.local_environment.get_attr(self.location,"people") > 0:
-            print("print")
+        if self.local_environment.get_attr(self.location, "people") > 0:
+            print("picked up: {} people".format(global_env.get_attr(self.location, "people")))
             # pickup people
-            self.people_carried = global_env.get_attr(self.location, "people")
+            self.people_carried += global_env.get_attr(self.location, "people")
             global_env.change_attr(self.location, "people", 0)
             self.active_state = "find_shelter"
             self.act(global_env)
@@ -210,19 +249,23 @@ class Greedy(Agent):
             self._act_find(global_env, "people")
 
     def _act_find_shelter(self, global_env):
+        # In case we encounter people on the road to the shelter.
+        if self.local_environment.get_attr(self.location, "people") > 0:
+            print("picked up: {} people".format(global_env.get_attr(self.location, "people")))
+            self.people_carried += global_env.get_attr(self.location, "people")
+            global_env.change_attr(self.location, "people", 0)
 
         # if the current node is a shelter
         if self.local_environment.get_attr(self.location, "shelter") > 0:
-
             # remove people into the shelter #TODO will not add people the shelter
+            self.score += self.people_carried
             self.people_carried = 0
             global_env.change_attr(self.location, "people", 0)
-
             self.active_state = "find_people"
             self.act(global_env)
 
         else:
-            self._act_find(global_env, "people")
+            self._act_find(global_env, "shelter")
 
 
 class Annihilator(Agent):
@@ -231,6 +274,7 @@ class Annihilator(Agent):
         self.wait_time = 0 #TODO change wait time.
         self.icon = plt.imread("icons/thunder-skull.png")
         self.states["annihilate"] = self._act_annihilate
+        self.states["traversing"] = self._act_traversing
         self.states["wait"] = self._act_wait
         self.active_state = "wait"
 
@@ -238,7 +282,27 @@ class Annihilator(Agent):
         super().set_environment(global_env)
         self.local_environment = global_env
 
+    def traverse_to_node(self, node,  global_env):
+        """
+        will move the agent to the node.
+        :param node: (hashable) the name of the node
+        :param global_env:
+        :return:
+        """
+        self.active_state = "traversing"
+        self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
+        ##Adding plus one to account for the fact that destroying roads takes 1 tick.
+        self.destination = node
+
+    def _act_traversing(self, global_env):
+        self.time_remaining_to_dest -= 1
+        if (self.time_remaining_to_dest <= 0):
+            self.location = self.destination
+            self.active_state = "annihilate"
+            self.act(global_env)
+
     def _act_annihilate(self, global_env):
+
         min_edge = self.get_min_edge(self.local_environment.graph.edges(self.location))
         print("destroyed edge: {}".format(min_edge))
         global_env.graph[min_edge[0]][min_edge[1]]["blocked"] = True
@@ -248,7 +312,7 @@ class Annihilator(Agent):
             self.active_state = "terminated"
             return
 
-        print("destroyer moved to edge: {}".format(new_min_edge[1]))
+        print("destroyer moved to node: {}".format(new_min_edge[1]))
         self.traverse_to_node(new_min_edge[1], global_env)
 
         """
