@@ -14,6 +14,14 @@ TODO 06/11/19
 7. IMPORTANT: Have the greedy save the whole path rather than re-calculate at every node.
 
 TODO 09/11/19
-1. Small graphical error - The agent arrives at a destination but the graph display doesn't reflect it.
+1.  ---DONE--- Small graphical error - The agent arrives at a destination but the graph display doesn't reflect it.
 2. PC agent currently doesn't pick people up. 
 3. Go through all agents check if they are terminate. If they are, terminate the simulation early.
+4. display score per agent
+
+10/11/19 (Almog)
+added graphic fixes and fixes for the greedy agent
+TODO
+1. If an agent is traversing to an annihilated node, it is annihilated.
+2. If will traversing the source is annihilated, it is annihilated.
+3. ---DONE--- reduce score to annihilated agent, by K (constant) + number of people carried.

@@ -19,6 +19,11 @@ class Environment:
         self.attributes = []
         #self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
         self.agents = [Greedy("Greed 1", 1)]
+
+        # update the world for every agent at startup
+        for agent in self.agents:
+            agent.set_environment(self)
+
         #self.agents = [Annihilator("Anna frank 1", 3)]
         self.time = 0
         # raise NotImplemented()
@@ -167,10 +172,7 @@ class Environment:
     def _print_agents_data(self, ax, pos):
 
         for agent in self.agents:
-            agent_node = agent.get_current_location()
-            # xy = pos[agent_node.name]
-            xy = pos[agent_node]
-            agent.get_annotation_box(xy, ax)
+            agent.get_annotation_box(pos, ax)
             if (agent.__getattribute__("score") != None):
                 print("Current agent score is: {}".format(agent.score))
 
