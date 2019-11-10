@@ -14,14 +14,16 @@ class Agent:
         initial knowledge? and informed action super mega 10000.0 generatoralizationrator processing king
         """
         self.name = name
-        self.states = {"no_op": self._act_no_op, "terminated": self._act_terminated}
+        self.states = {"no_op": self._act_no_op,
+                       "terminated": self._act_terminated,
+                       "traversing": self._act_traversing}
         self.active_state = "no_op"
         self.location = starting_node  # this is a key to a node in local_environment
         self.local_environment = None
-        self.carry_num = 0
+        self.carry_num = 0  # number of people currently been carried
         self.icon = None
         self.time_remaining_to_dest = 0
-        self.destination = 0
+        self.destination = self.location # key to the node been traversed
 
     def set_environment(self,  global_env):
         pass
@@ -37,18 +39,35 @@ class Agent:
         # TODO might want this to be in logging.debug
         print("agent {} is in state terminated and does nothing".format(self.name))
 
+    def _act_traversing(self, gloval_env):
+        raise NotImplemented()
+
     def get_current_location(self):
         return self.location
 
-    def get_annotation_box(self, xy, ax):
+    def get_annotation_box(self, pos, ax):
         """
         adds an annotation box with the agent icon on the ax
-        :param xy: coordinates of the node in the screen
+        :param pos: coordinates of all  of the nodes in the screen
         :param ax: axis from plt
         :return: None
         """
         imagebox = OffsetImage(self.icon, zoom=0.04, cmap='gray')
         imagebox.image.axes = ax
+
+        if self.destination == self.location:
+            xy = pos[self.location]
+
+        else:
+            weight = self.local_environment.graph.edges[self.location, self.destination]["weight"]
+            if weight > 0:
+                xy_from = pos[self.location]
+                xy_to = pos[self.destination]
+                pos_ratio = (weight - self.time_remaining_to_dest) / weight
+                xy = (1 - pos_ratio) * xy_from + pos_ratio * xy_to
+            else:
+                xy = pos[self.location]
+
         ab = AnnotationBbox(imagebox, xy,
                             xybox=(20, 20),
                             xycoords='data',
@@ -92,8 +111,22 @@ class Agent:
 
         return edge_to_ret
 
+    def traverse_to_node(self, node,  global_env):
+        """
+        will move the agent to the node.
+        :param node: (hashable) the name of the node
+        :param global_env:
+        :return:
+        """
+        self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
+        self.destination = node
+
+        self.active_state = "traversing"
+        self.act(global_env)
+
+
 class Pc(Agent):
-    def __init__(self,name,  starting_node):
+    def __init__(self, name,  starting_node):
         super().__init__(name, starting_node)
         self.icon = plt.imread("icons/monkey.png")
         self.states["user_input"] = self._act_user_input
@@ -107,17 +140,6 @@ class Pc(Agent):
     def set_environment(self, global_env):
         super().set_environment(global_env)
         self.local_environment = global_env
-
-    def traverse_to_node(self, node,  global_env):
-        """
-        will move the agent to the node.
-        :param node: (hashable) the name of the node
-        :param global_env:
-        :return:
-        """
-        self.active_state = "traversing"
-        self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
-        self.destination = node
 
     def _act_traversing(self, global_env):
         print("remaining time: {}".format(self.time_remaining_to_dest))
@@ -199,7 +221,7 @@ class Pc(Agent):
 
 
 class Greedy(Agent):
-    def __init__(self,name, starting_node):
+    def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
         self.icon = plt.imread("icons/brainstorm.png")
         self.states["find_people"] = self._act_find_people
@@ -211,21 +233,9 @@ class Greedy(Agent):
         self.score = 0
         self.terminate_once = 1
 
-
     def set_environment(self, global_env):
         super().set_environment(global_env)
         self.local_environment = global_env
-
-    def traverse_to_node(self, node,  global_env):
-        """
-        will move the agent to the node.
-        :param node: (hashable) the name of the node
-        :param global_env:
-        :return:
-        """
-        self.active_state = "traversing"
-        self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
-        self.destination = node
 
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
@@ -235,7 +245,7 @@ class Greedy(Agent):
                 self.active_state = "find_people"
             else:
                 self.active_state = "find_shelter"
-            self.act(global_env)
+            # self.act(global_env)
 
 
     def _act_find(self, global_env, find_by):
@@ -330,24 +340,12 @@ class Annihilator(Agent):
         super().set_environment(global_env)
         self.local_environment = global_env
 
-    def traverse_to_node(self, node,  global_env):
-        """
-        will move the agent to the node.
-        :param node: (hashable) the name of the node
-        :param global_env:
-        :return:
-        """
-        self.active_state = "traversing"
-        self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
-        ##Adding plus one to account for the fact that destroying roads takes 1 tick.
-        self.destination = node
-
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
         if (self.time_remaining_to_dest <= 0):
             self.location = self.destination
             self.active_state = "annihilate"
-            self.act(global_env)
+            # self.act(global_env)
 
     def _act_annihilate(self, global_env):
 
