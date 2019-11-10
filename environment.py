@@ -17,8 +17,8 @@ class Environment:
         for edge in parser_instance.edge_list:
             self.add_edge(edge["from"], edge["to"], **edge)
         self.attributes = []
-        #self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
-        self.agents = [Greedy("Greed 1", 1)]
+        self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
+        #self.agents = [Greedy("Greed 1", 1)]
         #self.agents = [Annihilator("Anna frank 1", 3)]
         self.time = 0
         # raise NotImplemented()

@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnnotationBbox,OffsetImage
 from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
 
+K = 2
+
 class Agent:
     def __init__(self, name,  starting_node):
         """
@@ -96,8 +98,11 @@ class Pc(Agent):
         self.icon = plt.imread("icons/monkey.png")
         self.states["user_input"] = self._act_user_input
         self.states["traversing"] = self._act_traversing
+        self.states["terminated"] = self._act_terminated
         self.active_state = "user_input"
+        self.people_carried = 0
         self.score = 0
+        self.terminate_once = 1
 
     def set_environment(self, global_env):
         super().set_environment(global_env)
@@ -136,7 +141,10 @@ class Pc(Agent):
 
         print("please insert an action:")
         print("numbers: (1,2,3,...) will move the Pc if an edge allow it")
-        options = self._get_traversable_nodes()
+        print("letters: \"tr\" to traverse, \"p\" to pick up people, \"d\" to drop off at shelter ")
+        print("letters: \"a\" to annihilate an adjacent edge, \"te\" to terminate")
+        traversable_nodes = self._get_traversable_nodes()
+        options = ["tr", "p", "d", "a", "te"] # p - pick up, d - drop off, a - annihilate.
         if len(options) == 0:
             print("no option for Agent {} to traverse and is terminated".format(self.name))
             self.active_state = "terminated"
@@ -145,18 +153,49 @@ class Pc(Agent):
         input_ok = False
         user_input = None
         while not input_ok:
-            try:
-                user_input = int(input())
-                if user_input in options:
-                    input_ok = True
+            user_input = input()
+            if not (user_input in options):
+                print("{} is not a valid option".format(user_input, self.location))
+                continue
+            if (user_input == "tr"):
+                print("Please type destination: ")
+                try:
+                    destination = int(input())
+                    if (destination) in traversable_nodes:
+                        self.traverse_to_node(destination, global_env)
+                        input_ok = True
+                        continue
+                    else:
+                        print("{} is not a neighbor to {}".format(destination, self.location))
+                        continue
+                except ValueError as e:
+                    print("{} is not a valid input as destination".format(user_input))
+                    input_ok = False
+
+            if ((user_input) == "te"):
+                input_ok = True
+                self.active_state = "terminated"
+                self._act_terminated(global_env)
+
+            if ((user_input) == "p"):
+                print("picked up: {} people".format(global_env.get_attr(self.location, "people")))
+                self.people_carried += global_env.get_attr(self.location, "people")
+                global_env.change_attr(self.location, "people", 0)
+
+            if ((user_input == "d")):
+                if self.local_environment.get_attr(self.location, "shelter") > 0:
+                    print("Dropping off {} people".format(self.people_carried))
+                    self.score += self.people_carried
+                    self.people_carried = 0
                 else:
-                    print("{} is not a neighbor to {}".format(user_input, self.location))
+                    print("Not a valid drop-off location, NO MAN LEFT BEHIND!")
 
-            except ValueError as e:
-                print(" not a valid input, try again with numbers")
-        self.traverse_to_node(user_input, global_env)
-
-
+    def _act_terminated(self, global_env):
+        if self.terminate_once > 0:
+            print("Human agent will now terminate. Goodbye")
+            self.score -= K + self.people_carried
+            print("Score: {}".format(self.score))
+            self.terminate_once -= 1
 
 
 class Greedy(Agent):
@@ -166,9 +205,11 @@ class Greedy(Agent):
         self.states["find_people"] = self._act_find_people
         self.states["find_shelter"] = self._act_find_shelter
         self.states["traversing"] = self._act_traversing
+        self.states["terminated"] = self._act_terminated
         self.active_state = "find_people"
         self.people_carried = 0
         self.score = 0
+        self.terminate_once = 1
 
 
     def set_environment(self, global_env):
@@ -266,6 +307,13 @@ class Greedy(Agent):
 
         else:
             self._act_find(global_env, "shelter")
+
+    def _act_terminated(self, global_env):
+        if self.terminate_once > 0:
+            print("Greedy agent has been terminated.")
+            self.score -= K + self.people_carried
+            print("Score: {}".format(self.score))
+            self.terminate_once -= 1
 
 
 class Annihilator(Agent):
