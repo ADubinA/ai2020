@@ -28,4 +28,4 @@ TODO
 
 12/11/19 (Aviv)
 
-1. Currently shortest path is selected by number of edges, not length as expressed by weight, changed to take the weight into account.
+1. --- DONE ---Currently shortest path is selected by number of edges, not length as expressed by weight, changed to take the weight into account.
