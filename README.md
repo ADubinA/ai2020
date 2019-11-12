@@ -25,3 +25,7 @@ TODO
 1. If an agent is traversing to an annihilated node, it is annihilated.
 2. If will traversing the source is annihilated, it is annihilated.
 3. ---DONE--- reduce score to annihilated agent, by K (constant) + number of people carried.
+
+12/11/19 (Aviv)
+
+1. Currently shortest path is selected by number of edges, not length as expressed by weight, changed to take the weight into account.
