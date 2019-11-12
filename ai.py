@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 from matplotlib.offsetbox import AnnotationBbox,OffsetImage
 from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
+from networkx.algorithms.shortest_paths.generic import shortest_path_length
 
 K = 2
 
@@ -17,13 +18,23 @@ class Agent:
         self.states = {"no_op": self._act_no_op,
                        "terminated": self._act_terminated,
                        "traversing": self._act_traversing}
+
+        ##### STATE DEFINITION #####
         self.active_state = "no_op"
         self.location = starting_node  # this is a key to a node in local_environment
-        self.local_environment = None
         self.carry_num = 0  # number of people currently been carried
+        self.score = 0
+        self.curr_time = 0
+        self.nodes_containing_people = []
+        ##### STATE DEFINITION #####
+
+        self.local_environment = None
         self.icon = None
         self.time_remaining_to_dest = 0
         self.destination = self.location # key to the node been traversed
+
+    def heuristic(self, local_env):
+        pass
 
     def set_environment(self,  global_env):
         pass
@@ -134,7 +145,6 @@ class Pc(Agent):
         self.states["terminated"] = self._act_terminated
         self.active_state = "user_input"
         self.people_carried = 0
-        self.score = 0
         self.terminate_once = 1
 
     def set_environment(self, global_env):
@@ -230,7 +240,6 @@ class Greedy(Agent):
         self.states["terminated"] = self._act_terminated
         self.active_state = "find_people"
         self.people_carried = 0
-        self.score = 0
         self.terminate_once = 1
 
     def set_environment(self, global_env):
@@ -247,12 +256,14 @@ class Greedy(Agent):
                 self.active_state = "find_shelter"
             # self.act(global_env)
 
-
+    # Returns a dictionary of nodes and shortest weight to nodes.
     def _act_find(self, global_env, find_by):
         if find_by == "people":
             search_attribute = "people"
         else:
             search_attribute = "shelter"
+
+        shortest_paths_to_target = []
         # filter nodes that have only people in them ( >0 )
         node_options = self.local_environment.graph.nodes
         node_options = [node for node, data in node_options.items() if data[search_attribute] > 0]
@@ -267,13 +278,20 @@ class Greedy(Agent):
         # I choose here a random node, but other options will be better and slower
         best_path_length = float("inf")
         best_path = None
+        curr_path_length = 0
+        curr_path_edges = []
         for node_option in node_options:
-
+            curr_path_length = 0
             # find the shortest path from the filtered ones
+
             shortest_path = shortest_path_algorithm(self.local_environment.graph, self.location, node_option,
                                                    weight="weight")
-            if len(shortest_path) < best_path_length:
-                best_path_length = len(shortest_path)
+            curr_path_edges = zip(shortest_path,shortest_path[1:])
+            for edge in curr_path_edges:
+                curr_path_length += self.local_environment.graph[edge[0]][edge[1]]["weight"]
+
+            if curr_path_length < best_path_length:
+                best_path_length = curr_path_length
                 best_path = shortest_path
 
         # move to the next path
@@ -375,3 +393,5 @@ class Annihilator(Agent):
         if (global_env.time >= self.wait_time):
             self.active_state = "annihilate"
             self._act_annihilate(global_env)
+
+
