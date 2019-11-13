@@ -31,7 +31,7 @@ class Agent:
         self.local_environment = None
         self.icon = None
         self.time_remaining_to_dest = 0
-        self.destination = self.location # key to the node been traversed
+        self.destination = self.location  # key to the node been traversed
 
     def heuristic(self, local_env):
         pass
@@ -407,3 +407,51 @@ class Annihilator(Agent):
             self._act_annihilate(global_env)
 
 
+class HeuristicAgent(Greedy):
+    def __init__(self, name, starting_node):
+        super().__init__(name, starting_node)
+
+
+    ##Checks if current state was terminate. If it wasn't, expand nodes.
+    """
+        Stages:
+        while true:
+            1. Pop the first state in the state-min-heap, calculated by score.
+            2. If it's terminate, return the path leading up to it.
+            3. If it's not, expand it by checking all neighbhors+immediate terminate
+            4. Add each expansion to the min heap
+    """
+    def initilizer(self):
+        """
+        minHeap = create_empty_heap() #to be sorted by f
+        minHeap.add(initial state)
+        return main_loop(minHeap) ##expect a path
+        ##If the path is empty, it means terminate.
+        """
+        pass
+
+    def main_loop(self, minHeap):
+        """
+        expansions = 0
+        while(curr_expansion < limit):
+            curr_node = minHeap.pop()
+            #if destinatin is -1, it means terminate
+            neighbhors = get_neighbhors(curr_node)
+            for neighbhor in neighbhors:
+                minHeap.add(expand_node(self, destination, weight)
+
+            #if destinatin is -1, it means terminate
+            minHeap.add(expand_Node(self, destination, weight, termiante = True), curr_node.append(destination))
+            expansions += 1
+        """
+        pass
+
+
+
+    def expand_node(self, destination, weight, terminate = False):
+        ##returns the score of the node expanded
+        """
+        if not terminated, return  h
+        if terminated, return g
+        """
+        pass
