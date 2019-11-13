@@ -95,11 +95,28 @@ class Environment:
         self._update_environment()
 
     def get_passable_subgraph(self):
+        """
 
+        :return:
+        """
         non_destroyed_nodes = [node for node in self.graph.nodes if self.get_attr(node, "deadline") > 0]
         subgraph = nx.subgraph(self.graph,non_destroyed_nodes)
 
-        # destroyed_edges = [edge for ]
+        destroyed_edges = [edge for edge in self.graph.edges if edge["blocked"]]
+        subgraph.remove_edges_from(destroyed_edges)
+        return subgraph
+
+    def calculate_path_time(self, path):
+        """
+        calculate the time it takes to move in the given path
+        :param path: list of hash nodes
+        :return: time it takes
+        """
+        time = 0
+        for node_index in range(len(path) - 1):
+            time += self.graph.edges[path[node_index], path[node_index + 1]]["weight"]
+
+        return path
 
     def display(self, save_dir=None):
         """
