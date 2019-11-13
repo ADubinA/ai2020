@@ -33,11 +33,52 @@ class Agent:
         self.time_remaining_to_dest = 0
         self.destination = self.location # key to the node been traversed
 
-    def heuristic(self, local_env):
-        pass
+    def heuristic(self):
+
+        heuristic_value = 0
+
+        people_paths = self.filter_savable(self.nodes_containing_people, "people")
+
+        for people_node, people_path in people_paths:
+            if people_path is None:
+                # if there is no path add to the heuristics
+                heuristic_value += self.local_environment.get_attr(people_node, "people")
+
+            else:
+                # get all the shelter paths
+                shelter_paths = self.filter_savable(people_node, "shelter",
+                                                    time=self.local_environment.calculate_path_time(people_path))
+                # filter that ones without a path
+                shelter_paths = [shelter_path for _, shelter_path in shelter_paths if shelter_path is not None]
+                # if there
+                if len(shelter_paths) < 1:
+                    heuristic_value += self.local_environment.get_attr(people_node, "people")
+
+
+        return heuristic_value
+
+    def filter_savable(self, nodes, key, time=0):
+        # get all people nodes in the graph
+        nodes = [node for node in nodes if
+                 self.local_environment.get_attr(node, key) > 0]
+
+        # find shortest paths if exist
+        savable_path = self.find_reachable(source=self.location, node_list=nodes)
+
+        for node, path in savable_path:
+
+            # check if shortest path doesn't exceed deadline
+            time_at_path = time + self.local_environment.calculate_path_time(path)
+
+            # if it does, add num of people in that node to heuristic
+            if time_at_path >= self.local_environment.get_attr(node, "deadline"):
+                savable_path[node] = None
+
+        return savable_path
+
 
     def set_environment(self,  global_env):
-        pass
+        NotImplemented()
 
     def act(self,  global_env):
         print("agent {} is in state {} and will act now".format(self.name, self.active_state))
@@ -135,7 +176,7 @@ class Agent:
         self.active_state = "traversing"
         self.act(global_env)
 
-    def find_reachable(self, start, node_list):
+    def find_reachable(self, source, node_list):
         """
 
         :param start: starting node hash local env
@@ -145,8 +186,11 @@ class Agent:
         """
         # get the subgraph
         # I choose here a random node, but other options will be better and slower
+        passable_subgraph = self.local_environment.get_passable_subgraph()
 
-        single_source_dijkstra()
+        shortest_paths = single_source_dijkstra(passable_subgraph, source,node_list)
+        return shortest_paths
+
 
 class Pc(Agent):
     def __init__(self, name,  starting_node):
