@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from matplotlib.offsetbox import AnnotationBbox,OffsetImage
 from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
-from networkx.algorithms.shortest_paths.generic import shortest_path_length
+from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 
 K = 2
 
@@ -135,6 +135,18 @@ class Agent:
         self.active_state = "traversing"
         self.act(global_env)
 
+    def find_reachable(self, start, node_list):
+        """
+
+        :param start: starting node hash local env
+        :param node_list: list of nodes from local env that we want to find shortest path to
+        :return: A list of the the same size as node_list containing  the shortest path in local env from start
+                or None if doesn't exist
+        """
+        # get the subgraph
+        # I choose here a random node, but other options will be better and slower
+
+        single_source_dijkstra()
 
 class Pc(Agent):
     def __init__(self, name,  starting_node):

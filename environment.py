@@ -94,6 +94,13 @@ class Environment:
 
         self._update_environment()
 
+    def get_passable_subgraph(self):
+
+        non_destroyed_nodes = [node for node in self.graph.nodes if self.get_attr(node, "deadline") > 0]
+        subgraph = nx.subgraph(self.graph,non_destroyed_nodes)
+
+        # destroyed_edges = [edge for ]
+
     def display(self, save_dir=None):
         """
         display the graph current state.
