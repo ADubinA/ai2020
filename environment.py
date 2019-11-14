@@ -104,9 +104,8 @@ class Environment:
         :return:
         """
         non_destroyed_nodes = [node for node in self.graph.nodes if self.get_attr(node, "deadline") > 0]
-        subgraph = nx.subgraph(self.graph,non_destroyed_nodes)
-
-        destroyed_edges = [edge for edge in self.graph.edges if edge["blocked"]]
+        subgraph = nx.Graph(nx.subgraph(self.graph,non_destroyed_nodes))
+        destroyed_edges = [edge for edge in self.graph.edges if self.graph.edges[edge]["blocked"]]
         subgraph.remove_edges_from(destroyed_edges)
         return subgraph
 
@@ -120,7 +119,7 @@ class Environment:
         for node_index in range(len(path) - 1):
             time += self.graph.edges[path[node_index], path[node_index + 1]]["weight"]
 
-        return path
+        return time
 
     def display(self, save_dir=None):
         """
@@ -154,13 +153,17 @@ class Environment:
         plt.title("Graph at time: {}".format(self.time))
 
         # even spaced shell layout
-        pos = nx.shell_layout(self.graph)
+        pos = nx.circular_layout(self.graph, scale=2)
+        pos = {node:node_pos*0.5 for node,node_pos in pos.items()}
 
         # add the weight labels to the figure
         edge_labels = dict([((u, v,), d['weight']) for u, v, d in self.graph.edges(data=True)])
-        nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=edge_labels)
+        nx.draw_networkx_edge_labels(self.graph, pos,
+                                     edge_labels=edge_labels,
+                                     node_size=100)
 
         self._print_node_data(ax, pos, "people", 1)
+        self._print_node_data(ax, pos, "shelter", 2)
 
         self._print_agents_data(ax, pos)
         # draw the rest of the graph
@@ -195,7 +198,7 @@ class Environment:
         for node, attr in node_attrs.items():
             custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
 
-        nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs)
+        nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
 
     def _print_agents_data(self, ax, pos):
 

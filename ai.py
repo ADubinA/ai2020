@@ -28,6 +28,7 @@ class Agent:
         self.people_saved = 0
         self.curr_time = 0
         self.nodes_containing_people = []
+        self.nodes_containing_shelter = []
         ##### STATE DEFINITION #####
         self.score = 0
         self.local_environment = None
@@ -37,19 +38,20 @@ class Agent:
 
     def heuristic(self):
         heuristic_value = 0
-        people_paths = self.filter_savable(self.nodes_containing_people, "people")
 
-        for people_node, people_path in people_paths:
+        people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people")
+
+        for people_node, people_path in people_paths.items():
             if people_path is None:
                 # if there is no path add to the heuristics
                 heuristic_value += self.local_environment.get_attr(people_node, "people")
 
             else:
                 # get all the shelter paths
-                shelter_paths = self.filter_savable(people_node, "shelter",
+                shelter_paths = self.filter_savable(people_node,self.nodes_containing_shelter, "shelter",
                                                     time=self.local_environment.calculate_path_time(people_path))
                 # filter that ones without a path
-                shelter_paths = [shelter_path for _, shelter_path in shelter_paths if shelter_path is not None]
+                shelter_paths = [shelter_path for _, shelter_path in shelter_paths.items() if shelter_path is not None]
                 # if there
                 if len(shelter_paths) < 1:
                     heuristic_value += self.local_environment.get_attr(people_node, "people")
@@ -57,8 +59,7 @@ class Agent:
 
         return heuristic_value
 
-
-    def filter_savable(self, nodes, key, time=0):
+    def filter_savable(self,source, nodes, key, time=0):
         # get all people nodes in the graph
         nodes = [node for node in nodes if
                  self.local_environment.get_attr(node, key) > 0]
@@ -66,7 +67,7 @@ class Agent:
         # find shortest paths if exist
         savable_path = self.find_reachable(source=self.location, node_list=nodes)
 
-        for node, path in savable_path:
+        for node, path in savable_path.items():
 
             # check if shortest path doesn't exceed deadline
             time_at_path = time + self.local_environment.calculate_path_time(path)
@@ -79,11 +80,15 @@ class Agent:
 
 
     def set_environment(self,  global_env):
-        # self.local_environment = nx.Graph.copy(global_env)
         self.local_environment = global_env
+        self.nodes_containing_people = [node for node in global_env.graph.nodes if
+                                        global_env.get_attr(node, "people")>0]
+        self.nodes_containing_shelter = [node for node in global_env.graph.nodes if
+                                        global_env.get_attr(node, "shelter")>0]
 
     def act(self,  global_env):
         print("agent {} is in state {} and will act now".format(self.name, self.active_state))
+        print("heuristics = " + str(self.heuristic()))
         self.states[self.active_state](global_env)
 
     def _act_no_op(self, gloval_env):
@@ -181,7 +186,7 @@ class Agent:
     def find_reachable(self, source, node_list):
         """
 
-        :param start: starting node hash local env
+        :param source: starting node hash local env
         :param node_list: list of nodes from local env that we want to find shortest path to
         :return: A list of the the same size as node_list containing  the shortest path in local env from start
                 or None if doesn't exist
@@ -189,7 +194,9 @@ class Agent:
         # get the subgraph
         # I choose here a random node, but other options will be better and slower
         passable_subgraph = self.local_environment.get_passable_subgraph()
-        shortest_paths = single_source_dijkstra(passable_subgraph, source,node_list)
+
+        shortest_paths = single_source_dijkstra(passable_subgraph, source)[1]
+        shortest_paths = {node:path for node, path in shortest_paths.items() if node in set(node_list)}
         return shortest_paths
 
 
@@ -411,12 +418,21 @@ class Annihilator(Agent):
 
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
-        if (self.time_remaining_to_dest <= 0):
+        if self.time_remaining_to_dest <= 0:
             self.location = self.destination
             self.active_state = "annihilate"
             # self.act(global_env)
 
     def _act_annihilate(self, global_env):
+
+        """
+        The vandal works as follows: it does wait_time no-ops,
+        and then blocks the lowest-cost edge adjacent to its current vertex (takes 1 time unit).
+        Then it traverses a lowest-cost remaining edge, and this is repeated.
+        Prefer the lowest-numbered node in case of ties. If there is no edge to block or traverse, do terminate.
+        :param global_env:
+        :return: None
+        """
 
         min_edge = self.get_min_edge(self.local_environment.graph.edges(self.location))
         print("destroyed edge: {}".format(min_edge))
@@ -430,14 +446,6 @@ class Annihilator(Agent):
         print("destroyer moved to node: {}".format(new_min_edge[1]))
         self.traverse_to_node(new_min_edge[1], global_env)
 
-        """
-        The vandal works as follows: it does wait_time no-ops,
-        and then blocks the lowest-cost edge adjacent to its current vertex (takes 1 time unit).
-        Then it traverses a lowest-cost remaining edge, and this is repeated.
-        Prefer the lowest-numbered node in case of ties. If there is no edge to block or traverse, do terminate.
-        :param global_env:
-        :return: None
-        """
 
 
     def _act_wait(self, global_env):
