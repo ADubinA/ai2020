@@ -5,6 +5,7 @@ from parser import Parser
 from ai import Pc
 from ai import Annihilator
 from ai import Greedy
+from ai import HeuristicAgent
 
 class Environment:
     def __init__(self, file_name):
@@ -12,14 +13,17 @@ class Environment:
         active_agents = 1 ##TODO update this in a concise way
         # here we insert the parser to the vars
         self.graph = nx.Graph()
+        self.people_in_graph = 0
         for vertex in parser_instance.vertex_list:
             self.add_vertex(**vertex)
+            self.people_in_graph += vertex["people"]
         for edge in parser_instance.edge_list:
             self.add_edge(edge["from"], edge["to"], **edge)
         self.attributes = []
         #self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
-        self.agents = [Greedy("Greed 1", 1)]
-
+        #self.agents = [Greedy("Greed 1", 1)]
+        self.agents = [HeuristicAgent("Holly 1", 1)]
+        self.score = 0
         # update the world for every agent at startup
         for agent in self.agents:
             agent.set_environment(self)

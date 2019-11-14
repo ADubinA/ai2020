@@ -1,11 +1,13 @@
 import networkx as nx
 import matplotlib.pyplot as plt
+import heapq
 
 from matplotlib.offsetbox import AnnotationBbox,OffsetImage
 from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 
 K = 2
+expansion_limit = 100000
 
 class Agent:
     def __init__(self, name,  starting_node):
@@ -23,20 +25,18 @@ class Agent:
         self.active_state = "no_op"
         self.location = starting_node  # this is a key to a node in local_environment
         self.carry_num = 0  # number of people currently been carried
-        self.score = 0
+        self.people_saved = 0
         self.curr_time = 0
         self.nodes_containing_people = []
         ##### STATE DEFINITION #####
-
+        self.score = 0
         self.local_environment = None
         self.icon = None
         self.time_remaining_to_dest = 0
         self.destination = self.location  # key to the node been traversed
 
     def heuristic(self):
-
         heuristic_value = 0
-
         people_paths = self.filter_savable(self.nodes_containing_people, "people")
 
         for people_node, people_path in people_paths:
@@ -56,6 +56,7 @@ class Agent:
 
 
         return heuristic_value
+
 
     def filter_savable(self, nodes, key, time=0):
         # get all people nodes in the graph
@@ -78,7 +79,8 @@ class Agent:
 
 
     def set_environment(self,  global_env):
-        NotImplemented()
+        # self.local_environment = nx.Graph.copy(global_env)
+        self.local_environment = global_env
 
     def act(self,  global_env):
         print("agent {} is in state {} and will act now".format(self.name, self.active_state))
@@ -187,7 +189,6 @@ class Agent:
         # get the subgraph
         # I choose here a random node, but other options will be better and slower
         passable_subgraph = self.local_environment.get_passable_subgraph()
-
         shortest_paths = single_source_dijkstra(passable_subgraph, source,node_list)
         return shortest_paths
 
@@ -202,10 +203,6 @@ class Pc(Agent):
         self.active_state = "user_input"
         self.people_carried = 0
         self.terminate_once = 1
-
-    def set_environment(self, global_env):
-        super().set_environment(global_env)
-        self.local_environment = global_env
 
     def _act_traversing(self, global_env):
         print("remaining time: {}".format(self.time_remaining_to_dest))
@@ -273,7 +270,7 @@ class Pc(Agent):
             if ((user_input == "d")):
                 if self.local_environment.get_attr(self.location, "shelter") > 0:
                     print("Dropping off {} people".format(self.people_carried))
-                    self.score += self.people_carried
+                    self.people_saved += self.people_carried
                     self.people_carried = 0
                 else:
                     print("Not a valid drop-off location, NO MAN LEFT BEHIND!")
@@ -281,7 +278,7 @@ class Pc(Agent):
     def _act_terminated(self, global_env):
         if self.terminate_once > 0:
             print("Human agent will now terminate. Goodbye")
-            self.score -= K + self.people_carried
+            self.score -= (K + self.people_carried) if (self.people_carried > 0) else 0
             print("Score: {}".format(self.score))
             self.terminate_once -= 1
 
@@ -298,9 +295,10 @@ class Greedy(Agent):
         self.people_carried = 0
         self.terminate_once = 1
 
-    def set_environment(self, global_env):
-        super().set_environment(global_env)
-        self.local_environment = global_env
+    def calculate_real_score(self):
+        real_score = self.local_environment.people_in_graph - self.people_saved
+        real_score += (K + self.people_carried) if (self.people_carried > 0) else 0
+        return real_score
 
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
@@ -362,10 +360,11 @@ class Greedy(Agent):
         :return: None
         """
         # if there are people in this node
-        if self.local_environment.get_attr(self.location, "people") > 0:
-            print("picked up: {} people".format(global_env.get_attr(self.location, "people")))
+        people_in_location = global_env.get_attr(self.location, "people")
+        if people_in_location > 0:
+            print("picked up: {} people".format(people_in_location))
             # pickup people
-            self.people_carried += global_env.get_attr(self.location, "people")
+            self.people_carried += people_in_location
             global_env.change_attr(self.location, "people", 0)
             self.active_state = "find_shelter"
             self.act(global_env)
@@ -395,7 +394,7 @@ class Greedy(Agent):
     def _act_terminated(self, global_env):
         if self.terminate_once > 0:
             print("Greedy agent has been terminated.")
-            self.score -= K + self.people_carried
+            self.people_saved -= K + self.people_carried
             print("Score: {}".format(self.score))
             self.terminate_once -= 1
 
@@ -409,10 +408,6 @@ class Annihilator(Agent):
         self.states["traversing"] = self._act_traversing
         self.states["wait"] = self._act_wait
         self.active_state = "wait"
-
-    def set_environment(self, global_env):
-        super().set_environment(global_env)
-        self.local_environment = global_env
 
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
@@ -454,7 +449,8 @@ class Annihilator(Agent):
 class HeuristicAgent(Greedy):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
-
+        self.active_state = "Heuristic_Calculation"
+        self.states["Heuristic_Calculation"] = self._act_heuristic
 
     ##Checks if current state was terminate. If it wasn't, expand nodes.
     """
@@ -465,6 +461,14 @@ class HeuristicAgent(Greedy):
             3. If it's not, expand it by checking all neighbhors+immediate terminate
             4. Add each expansion to the min heap
     """
+
+    def calc_f(self):
+        return self.heuristic() + self.calculate_real_score()
+
+    def _act_heuristic(self, global_env):
+        self.initilizer()
+
+
     def initilizer(self):
         """
         minHeap = create_empty_heap() #to be sorted by f
@@ -472,7 +476,9 @@ class HeuristicAgent(Greedy):
         return main_loop(minHeap) ##expect a path
         ##If the path is empty, it means terminate.
         """
-        pass
+        state_score_heap = []
+        heapq.heappush(state_score_heap, (self.calc_f(), self, []))
+        return self.main_loop(state_score_heap)
 
     def main_loop(self, minHeap):
         """
@@ -488,8 +494,13 @@ class HeuristicAgent(Greedy):
             minHeap.add(expand_Node(self, destination, weight, termiante = True), curr_node.append(destination))
             expansions += 1
         """
-        pass
+        expansions = 0
+        while (expansions < expansion_limit):
+            curr_node = minHeap.pop()
+            #second element is the agent
+            print (curr_node[1])
 
+        pass
 
 
     def expand_node(self, destination, weight, terminate = False):
