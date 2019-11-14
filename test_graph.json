@@ -31,31 +31,31 @@
     {
       "from": 1,
       "to": 2,
-      "weight": 20,
+      "weight": 2,
       "blocked": false
     },
     {
       "from": 3,
       "to": 4,
-      "weight": 10,
+      "weight": 1,
       "blocked": false
     },
     {
       "from": 2,
       "to": 3,
-      "weight": 30,
+      "weight": 3,
       "blocked": false
     },
         {
       "from": 1,
       "to": 3,
-      "weight": 40,
+      "weight": 4,
       "blocked": false
     },
     {
       "from": 2,
       "to": 4,
-      "weight": 88,
+      "weight": 8,
       "blocked": false
     }
   ]
