@@ -5,7 +5,7 @@ from parser import Parser
 from ai import Pc
 from ai import Annihilator
 from ai import Greedy
-from ai import HeuristicAgent
+from ai import AStarAgent
 
 class Environment:
     def __init__(self, file_name):
@@ -22,7 +22,7 @@ class Environment:
         self.attributes = []
         #self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
         #self.agents = [Greedy("Greed 1", 1)]
-        self.agents = [HeuristicAgent("Holly 1", 1)]
+        self.agents = [AStarAgent("420Ass_Master_69", 1)]
         self.score = 0
         # update the world for every agent at startup
         for agent in self.agents:
@@ -91,6 +91,7 @@ class Environment:
         # update the world for every agent
         for agent in self.agents:
             agent.set_environment(self)
+            agent.curr_time += 1
 
         # each agent act on the world at his turn
         for agent in self.agents:
@@ -98,12 +99,13 @@ class Environment:
 
         self._update_environment()
 
-    def get_passable_subgraph(self):
+    def get_passable_subgraph(self, at_time=0):
         """
-
+        :at_time: (int) calculate the passable subgraph in the future after at_time ticks
         :return:
         """
-        non_destroyed_nodes = [node for node in self.graph.nodes if self.get_attr(node, "deadline") > 0]
+
+        non_destroyed_nodes = [node for node in self.graph.nodes if self.get_attr(node, "deadline") > at_time]
         subgraph = nx.Graph(nx.subgraph(self.graph,non_destroyed_nodes))
         destroyed_edges = [edge for edge in self.graph.edges if self.graph.edges[edge]["blocked"]]
         subgraph.remove_edges_from(destroyed_edges)

@@ -3,25 +3,25 @@
           [
             {
               "name": 1,
-              "deadline": 100,
+              "deadline": 10,
               "shelter": true,
               "people": 0
             },
                         {
               "name": 2,
-              "deadline": 100,
+              "deadline": 10,
               "shelter": false,
               "people": 2
             },
                         {
               "name": 3,
-              "deadline": 111,
+              "deadline": 11,
               "shelter": true,
               "people": 0
             },
                         {
               "name": 4,
-              "deadline": 100,
+              "deadline": 10,
               "shelter": false,
               "people": 2
             }

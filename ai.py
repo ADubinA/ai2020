@@ -1,7 +1,7 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import heapq
-
+import copy
 from matplotlib.offsetbox import AnnotationBbox,OffsetImage
 from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
@@ -10,6 +10,7 @@ K = 2
 expansion_limit = 100000
 
 class Agent:
+
     def __init__(self, name,  starting_node):
         """
         behavior (function of how to act on the graph)
@@ -29,7 +30,6 @@ class Agent:
         self.people_saved = 0
         self.curr_time = 0
         self.nodes_containing_people = []
-        self.nodes_containing_shelter = []
 
         ##### STATE DEFINITION #####
         self.score = 0
@@ -38,30 +38,46 @@ class Agent:
         self.time_remaining_to_dest = 0
         self.destination = self.location  # key to the node been traversed
 
+    def __ge__(self, other):
+        return self.location >= other.location
+    def __le__(self, other):
+        return self.location <= other.location
+    def __lt__(self, other):
+        return self.location < other.location
+    def __gt__(self, other):
+        return self.location > other.location
+
+    def traverse_path(self, path):
+        """
+        :param path: Path is represented as a list of nodes representing stops on the path
+
+        :return:
+        """
+
     def heuristic(self):
         heuristic_value = 0
-
-        people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people")
-
-        for people_node, people_path in people_paths.items():
-            if people_path is None:
-                # if there is no path add to the heuristics
-                heuristic_value += self.local_environment.get_attr(people_node, "people")
-
-            else:
-                # get all the shelter paths
-                shelter_paths = self.filter_savable(people_node,self.nodes_containing_shelter, "shelter",
-                                                    time=self.local_environment.calculate_path_time(people_path))
-                # filter that ones without a path
-                shelter_paths = [shelter_path for _, shelter_path in shelter_paths.items() if shelter_path is not None]
-                # if there
-                if len(shelter_paths) < 1:
+        if (self.active_state != "terminated"):
+            people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people")
+            for people_node, people_path in people_paths.items():
+                if people_path is None:
+                    # if there is no path add to the heuristics
                     heuristic_value += self.local_environment.get_attr(people_node, "people")
 
+                else:
+                    # get all the shelter paths
+                    nodes_containing_shelter = [node for node in self.local_environment.graph.nodes if
+                                                self.local_environment.get_attr(node, "shelter") > 0]
 
+                    shelter_paths = self.filter_savable(people_node,nodes_containing_shelter, "shelter",
+                                                        time=self.local_environment.calculate_path_time(people_path))
+                    # filter that ones without a path
+                    shelter_paths = [shelter_path for _, shelter_path in shelter_paths.items() if shelter_path is not None]
+                    # if there
+                    if len(shelter_paths) < 1:
+                        heuristic_value += self.local_environment.get_attr(people_node, "people")
         return heuristic_value
 
-    def filter_savable(self,source, nodes, key, time=0):
+    def filter_savable(self, source, nodes, key, time=0):
         # get all people nodes in the graph
         nodes = [node for node in nodes if
                  self.local_environment.get_attr(node, key) > 0]
@@ -80,13 +96,10 @@ class Agent:
 
         return savable_path
 
-
     def set_environment(self,  global_env):
         self.local_environment = global_env
         self.nodes_containing_people = [node for node in global_env.graph.nodes if
-                                        global_env.get_attr(node, "people")>0]
-        self.nodes_containing_shelter = [node for node in global_env.graph.nodes if
-                                        global_env.get_attr(node, "shelter")>0]
+                                        global_env.get_attr(node, "people") > 0]
 
     def act(self,  global_env):
         print("agent {} is in state {} and will act now".format(self.name, self.active_state))
@@ -305,8 +318,10 @@ class Greedy(Agent):
         self.terminate_once = 1
 
     def calculate_real_score(self):
-        real_score = self.local_environment.people_in_graph - self.people_saved
-        real_score += (K + self.people_carried) if (self.people_carried > 0) else 0
+        real_score = 0
+        if (self.active_state == "terminated"):
+            real_score = self.local_environment.people_in_graph - self.people_saved
+            real_score += (K + self.people_carried) if (self.people_carried > 0) else 0
         return real_score
 
     def _act_traversing(self, global_env):
@@ -456,12 +471,13 @@ class Annihilator(Agent):
             self._act_annihilate(global_env)
 
 
-class HeuristicAgent(Greedy):
+class AStarAgent(Greedy):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
         self.active_state = "Heuristic_Calculation"
         self.states["Heuristic_Calculation"] = self._act_heuristic
-
+        self.path = None
+        self.destination_index = 0  # this is an index in the self.path
     ##Checks if current state was terminate. If it wasn't, expand nodes.
     """
         Stages:
@@ -473,10 +489,32 @@ class HeuristicAgent(Greedy):
     """
 
     def calc_f(self):
-        return self.heuristic() + self.calculate_real_score()
+        score = self.heuristic() + self.calculate_real_score()
+        return score
 
     def _act_heuristic(self, global_env):
-        self.initilizer()
+        self.path = self.initilizer()
+
+    def _act_traversing(self, global_env):
+        self.time_remaining_to_dest -= 1
+        if (self.time_remaining_to_dest <= 0):
+            try:
+                self.destination_index += 1
+                self.location = self.destination
+                self.destination = self.path[self.destination_index]
+
+            except IndexError:
+                self.active_state = "terminated"
+                return
+
+        if self.local_environment.get_attr(self.location, "people") > 0:
+            self.carry_num += self.local_environment.get_attr(self.location, "people")
+            self.local_environment.change_attr(self.location, "people", 0)
+
+        if self.local_environment.get_attr(self.location, "shelter") > 0:
+            self.people_saved += self.carry_num
+            self.carry_num = 0
+
 
 
     def initilizer(self):
@@ -487,7 +525,9 @@ class HeuristicAgent(Greedy):
         ##If the path is empty, it means terminate.
         """
         state_score_heap = []
-        heapq.heappush(state_score_heap, (self.calc_f(), self, []))
+
+        # first is f, second is agent, third is current path
+        heapq.heappush(state_score_heap, (self.calc_f(), copy.deepcopy(self), [self.location]))
         return self.main_loop(state_score_heap)
 
     def main_loop(self, minHeap):
@@ -507,15 +547,44 @@ class HeuristicAgent(Greedy):
         expansions = 0
         while (expansions < expansion_limit):
             curr_node = heapq.heappop(minHeap)
-            print ("current node: {}".format(curr_node[1].name))
+            if curr_node[1].active_state == "termianted":
+                return curr_node[2]
+            self.expand_node(minHeap, curr_node)
 
-        pass
-
-
-    def expand_node(self, destination, weight, terminate = False):
-        ##returns the score of the node expanded
+    def expand_node(self, minHeap, curr_node):
         """
         if not terminated, return  h
         if terminated, return g
         """
-        pass
+        agent = curr_node[1]
+        current_route = curr_node[2]
+        # create new agents for every neighbors
+        print(agent.location)
+        neighbors = agent.local_environment.get_passable_subgraph(agent.curr_time)[agent.location]
+        for neighbor_node, neighbor_data in neighbors.items():
+            new_agent = copy.deepcopy(agent)
+            new_agent.location = neighbor_node
+            new_agent.curr_time += neighbor_data["weight"]
+
+            # if node has people in it
+            if new_agent.location in set(new_agent.nodes_containing_people):
+                new_agent.carry_num += new_agent.local_environment.get_attr(new_agent.location,"people")
+                new_nodes_containing_people = set(new_agent.nodes_containing_people)
+                new_nodes_containing_people.remove(neighbor_node)
+                new_agent.nodes_containing_people = list(new_nodes_containing_people)
+
+            # if node is a shelter
+            if new_agent.local_environment.get_attr(new_agent.location, "shelter") > 0:
+                new_agent.people_saved += new_agent.carry_num
+                new_agent.carry_num = 0
+
+            # add new agent to the heap
+            new_route = copy.deepcopy(current_route)
+            new_route.append(neighbor_node)
+
+            heapq.heappush(minHeap, (new_agent.calc_f(), new_agent, new_route))
+
+        # add new agent for the case what it is terminated here
+        new_agent = copy.deepcopy(agent)
+        new_agent.active_state = "terminated"
+        heapq.heappush(minHeap, (new_agent.calc_f(), new_agent, current_route))
