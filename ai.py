@@ -22,6 +22,7 @@ class Agent:
                        "traversing": self._act_traversing}
 
         ##### STATE DEFINITION #####
+
         self.active_state = "no_op"
         self.location = starting_node  # this is a key to a node in local_environment
         self.carry_num = 0  # number of people currently been carried
@@ -29,6 +30,7 @@ class Agent:
         self.curr_time = 0
         self.nodes_containing_people = []
         self.nodes_containing_shelter = []
+
         ##### STATE DEFINITION #####
         self.score = 0
         self.local_environment = None
@@ -504,9 +506,8 @@ class HeuristicAgent(Greedy):
         """
         expansions = 0
         while (expansions < expansion_limit):
-            curr_node = minHeap.pop()
-            #second element is the agent
-            print (curr_node[1])
+            curr_node = heapq.heappop(minHeap)
+            print ("current node: {}".format(curr_node[1].name))
 
         pass
 
