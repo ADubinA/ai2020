@@ -9,7 +9,8 @@ from ai import AStarAgent
 
 class Environment:
     def __init__(self, file_name):
-        parser_instance = Parser("test_graph.json")
+        #parser_instance = Parser("test_graph.json")
+        parser_instance = Parser("test_graph_as_shown_in_class.json")
         active_agents = 1 ##TODO update this in a concise way
         # here we insert the parser to the vars
         self.graph = nx.Graph()
@@ -22,7 +23,7 @@ class Environment:
         self.attributes = []
         #self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
         #self.agents = [Greedy("Greed 1", 1)]
-        self.agents = [AStarAgent("420Ass_Master_69", 1)]
+        self.agents = [AStarAgent("420AssMaster_69", 1)]
         self.score = 0
         # update the world for every agent at startup
         for agent in self.agents:
@@ -88,15 +89,14 @@ class Environment:
         calculate the next turn in the environment
         :return: None
         """
-        # update the world for every agent
-        for agent in self.agents:
-            agent.set_environment(self)
-            agent.curr_time += 1
-
         # each agent act on the world at his turn
         for agent in self.agents:
             agent.act(self)
 
+        # update the world for every agent
+        for agent in self.agents:
+            agent.set_environment(self)
+            agent.curr_time += 1
         self._update_environment()
 
     def get_passable_subgraph(self, at_time=0):
@@ -124,7 +124,7 @@ class Environment:
         return time
 
     def display(self, save_dir=None):
-        """
+        """                                                                                                                                                                                                                     z
         display the graph current state.
         :param save_dir: path to save the image. If None, will use plt.show()
         :return: None
@@ -180,7 +180,7 @@ class Environment:
     def _update_environment(self):
         self.time = self.time + 1
         for node in self.graph.nodes:
-            print(self.graph.nodes[node]["deadline"])
+            #print(self.graph.nodes[node]["deadline"])
             if self.graph.nodes[node]["deadline"] > 0:
                 self.graph.nodes[node]["deadline"] -= 1
         """for agent in self.agents:
