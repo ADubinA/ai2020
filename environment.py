@@ -10,7 +10,7 @@ from ai import AStarAgent
 class Environment:
     def __init__(self, file_name):
         #parser_instance = Parser("test_graph.json")
-        parser_instance = Parser("test_graph_as_shown_in_class.json")
+        parser_instance = Parser("test_graph_complex.json")
         active_agents = 1 ##TODO update this in a concise way
         # here we insert the parser to the vars
         self.graph = nx.Graph()
@@ -105,7 +105,7 @@ class Environment:
         :return:
         """
 
-        non_destroyed_nodes = [node for node in self.graph.nodes if self.get_attr(node, "deadline") > at_time]
+        non_destroyed_nodes = [node for node in self.graph.nodes if self.get_attr(node, "deadline") >= at_time]
         subgraph = nx.Graph(nx.subgraph(self.graph,non_destroyed_nodes))
         destroyed_edges = [edge for edge in self.graph.edges if self.graph.edges[edge]["blocked"]]
         subgraph.remove_edges_from(destroyed_edges)

@@ -507,6 +507,7 @@ class AStarAgent(Greedy):
 
     def _act_heuristic(self, global_env):
         self.path = self.initilizer()
+        print("The heuristic agent will now take path: {}".format(self.path))
         self.active_state = "traversing"
 
     def _act_traversing(self, global_env):
