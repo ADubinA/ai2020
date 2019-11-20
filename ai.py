@@ -332,7 +332,10 @@ class Greedy(Agent):
         real_score = 0
         if (self.active_state == "terminated"):
             real_score = self.local_environment.people_in_graph - self.people_saved
-            real_score += (K + self.people_carried) if (self.people_carried > 0) else 0
+            if (self.local_environment.get_attr(self.location, "shelter") == 0):
+                real_score += K + self.people_carried
+
+
         return real_score
 
     def _act_traversing(self, global_env):
@@ -510,6 +513,7 @@ class AStarAgent(Greedy):
         self.path = self.initilizer()
         print("The heuristic agent will now take path: {}".format(self.path))
         self.active_state = "traversing"
+        self.act(global_env)
 
     def traverse_to_node(self, node,  global_env):
         """
@@ -524,12 +528,18 @@ class AStarAgent(Greedy):
         self.active_state = "traversing"
 
     def _act_traversing(self, global_env):
+
+        # if self.destination_index==0:
+
+
         self.time_remaining_to_dest -= 1
         if (self.time_remaining_to_dest <= 0):
             try:
                 self.destination_index += 1
                 self.location = self.destination
                 self.traverse_to_node(self.path[self.destination_index], global_env)
+                if self.destination_index == 1:
+                    self.act(global_env)
 
             except IndexError:
                 self.active_state = "terminated"
@@ -554,6 +564,7 @@ class AStarAgent(Greedy):
         return main_loop(minHeap) ##expect a path
         ##If the path is empty, it means terminate.
         """
+        self.destination_index = 0
         state_score_heap = []
 
         # first is f, second is agent, third is current path
