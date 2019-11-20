@@ -5,7 +5,7 @@ from parser import Parser
 from ai import Pc
 from ai import Annihilator
 from ai import Greedy
-from ai import AStarAgent
+from ai import AStarAgent as SelectedAgent
 
 class Environment:
     def __init__(self, file_name):
@@ -23,7 +23,7 @@ class Environment:
         self.attributes = []
         #self.agents = [Pc("pc 1",1)] # TODO make this a node not a number
         #self.agents = [Greedy("Greed 1", 1)]
-        self.agents = [AStarAgent("420AssMaster_69", 1)]
+        self.agents = [SelectedAgent("420AssMaster_69", 1)]
         self.score = 0
         # update the world for every agent at startup
         for agent in self.agents:
@@ -158,6 +158,7 @@ class Environment:
         pos = nx.circular_layout(self.graph, scale=2)
         pos = {node:node_pos*0.5 for node,node_pos in pos.items()}
 
+        self._print_agents_data(ax, pos)
         # add the weight labels to the figure
         edge_labels = dict([((u, v,), d['weight']) for u, v, d in self.graph.edges(data=True)])
         nx.draw_networkx_edge_labels(self.graph, pos,
@@ -166,9 +167,10 @@ class Environment:
 
         self._print_node_data(ax, pos, "people", 1)
         self._print_node_data(ax, pos, "shelter", 2)
+        self._print_node_data(ax, pos, "deadline", 3)
 
-        self._print_agents_data(ax, pos)
         # draw the rest of the graph
+        ax.margins(0.4, 0.4)
         nx.draw(self.graph, pos, with_labels=True, font_weight='bold')
 
 
@@ -193,7 +195,7 @@ class Environment:
 
         pos_attrs = {}
         for node, coords in pos.items():
-            pos_attrs[node] = (coords[0], coords[1] + spacing*0.08)
+            pos_attrs[node] = (coords[0], coords[1] + spacing*0.06)
 
         node_attrs = nx.get_node_attributes(self.graph, name=dict_key)
         custom_node_attrs = {}

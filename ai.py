@@ -154,16 +154,17 @@ class Agent:
                 xy = pos[self.location]
 
         ab = AnnotationBbox(imagebox, xy,
-                            xybox=(20, 20),
+                            xybox=(50, 50),
                             xycoords='data',
                             boxcoords="offset points",
                             pad=0,
+
 
                             arrowprops=dict(
                                 arrowstyle="->",
                                 connectionstyle="angle,angleA=0,angleB=90,rad=3")
                             )
-
+        ab.set_zorder(0)
         ax.add_artist(ab)
 
     def _get_traversable_nodes(self):
@@ -510,13 +511,25 @@ class AStarAgent(Greedy):
         print("The heuristic agent will now take path: {}".format(self.path))
         self.active_state = "traversing"
 
+    def traverse_to_node(self, node,  global_env):
+        """
+        will move the agent to the node.
+        :param node: (hashable) the name of the node
+        :param global_env:
+        :return:
+        """
+        self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
+        self.destination = node
+
+        self.active_state = "traversing"
+
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
         if (self.time_remaining_to_dest <= 0):
             try:
                 self.destination_index += 1
                 self.location = self.destination
-                self.destination = self.path[self.destination_index]
+                self.traverse_to_node(self.path[self.destination_index], global_env)
 
             except IndexError:
                 self.active_state = "terminated"
