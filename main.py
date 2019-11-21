@@ -9,13 +9,15 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
     iteration = 0
     while iteration < max_tick:
         env.display()
+
+        if env.is_terminated():
+            break
+
         env.tick()
         time.sleep(seconds_per_tick)
-        """if (env.active_agents < 1): ## meaning there are no more agents to run.
-            break"""
         iteration += 1
     env.display()
 
-if __name__ == "__main__":
 
-    main("", 1)
+if __name__ == "__main__":
+    main("test_graph_complex.json",0.25 )

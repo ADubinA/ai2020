@@ -1,17 +1,22 @@
-import networkx as nx
 import matplotlib.pyplot as plt
 import heapq
 import copy
-from matplotlib.offsetbox import AnnotationBbox,OffsetImage
+from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 
 K = 2
-expansion_limit = 100000
+expansion_limit = 1000000
+STATE_LIST = ["no_op", "terminated", "traversing",
+              "user_input",
+              "find_people", "find_shelter",
+              "annihilate", "wait",
+              "heuristic_calculation", "finished_traversing"]
+
 
 class Agent:
 
-    def __init__(self, name,  starting_node):
+    def __init__(self, name, starting_node):
         """
         behavior (function of how to act on the graph)
         knowledge (what the agent know about the world)
@@ -21,17 +26,18 @@ class Agent:
         self.states = {"no_op": self._act_no_op,
                        "terminated": self._act_terminated,
                        "traversing": self._act_traversing}
+        self.active_state = None
 
-        ##### STATE DEFINITION #####
+        # ----- STATE DEFINITION -------------
 
-        self.active_state = "no_op"
+        self.change_state("no_op")
         self.location = starting_node  # this is a key to a node in local_environment
         self.carry_num = 0  # number of people currently been carried
         self.people_saved = 0
         self.curr_time = 0
         self.nodes_containing_people = []
+        # ------------------------------------
 
-        ##### STATE DEFINITION #####
         self.score = 0
         self.local_environment = None
         self.icon = None
@@ -40,12 +46,26 @@ class Agent:
 
     def __ge__(self, other):
         return self.location >= other.location
+
     def __le__(self, other):
         return self.location <= other.location
+
     def __lt__(self, other):
         return self.location < other.location
+
     def __gt__(self, other):
         return self.location > other.location
+
+    def change_state(self, state):
+        if state not in STATE_LIST:
+            raise ValueError("state {} is not a valid name for a state. if it does, add it to "
+                             "STATE_LIST".format(state))
+
+        elif state not in set(self.states.keys()):
+            raise ValueError("state {} is a valid state, but not for agent of type {}".format(state, self))
+
+        else:
+            self.active_state = state
 
     def print_state(self, delim=True):
         print("Agent name: {}".format(self.name))
@@ -55,7 +75,7 @@ class Agent:
         print("Agent number of people saved: {}".format(self.people_saved))
         print("Agent current time: {}".format(self.curr_time))
         print("Agent nodes containing people: {}".format(self.nodes_containing_people))
-        if (delim):
+        if delim:
             print("-----------------------------------")
 
     def traverse_path(self, path):
@@ -67,7 +87,7 @@ class Agent:
 
     def heuristic(self):
         heuristic_value = 0
-        if (self.active_state != "terminated"):
+        if self.active_state != "terminated":
             people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people")
             for people_node, people_path in people_paths.items():
                 if people_path is None:
@@ -79,10 +99,12 @@ class Agent:
                     nodes_containing_shelter = [node for node in self.local_environment.graph.nodes if
                                                 self.local_environment.get_attr(node, "shelter") > 0]
 
-                    shelter_paths = self.filter_savable(people_node,nodes_containing_shelter, "shelter",
-                                                        time=self.local_environment.calculate_path_time(people_path) + self.curr_time)
+                    shelter_paths = self.filter_savable(people_node, nodes_containing_shelter, "shelter",
+                                                        time=self.local_environment.calculate_path_time(people_path) +
+                                                             self.curr_time)
                     # filter that ones without a path
-                    shelter_paths = [shelter_path for _, shelter_path in shelter_paths.items() if shelter_path is not None]
+                    shelter_paths = [shelter_path for _, shelter_path in shelter_paths.items() if
+                                     shelter_path is not None]
                     # if there
                     if len(shelter_paths) < 1:
                         heuristic_value += self.local_environment.get_attr(people_node, "people")
@@ -102,18 +124,19 @@ class Agent:
             time_at_path = time + self.local_environment.calculate_path_time(path)
 
             # if it does, add num of people in that node to heuristic
-            if time_at_path >= self.local_environment.get_attr(node, "deadline"):
+            if self.local_environment.get_node_deadline(node, time_at_path) > 0:
                 savable_path[node] = None
 
         return savable_path
 
-    def set_environment(self,  global_env):
+    def set_environment(self, global_env):
         self.local_environment = global_env
         self.nodes_containing_people = [node for node in global_env.graph.nodes if
                                         global_env.get_attr(node, "people") > 0]
 
-    def act(self,  global_env):
-        print("agent {} is in state {} and will act now".format(self.name, self.active_state))
+    def act(self, global_env):
+        print("agent {} is in state {} and acting at time {}".format(self.name,
+                                                                     self.active_state, self.local_environment.time))
         # print("heuristics = " + str(self.heuristic()))
         self.states[self.active_state](global_env)
 
@@ -159,7 +182,6 @@ class Agent:
                             boxcoords="offset points",
                             pad=0,
 
-
                             arrowprops=dict(
                                 arrowstyle="->",
                                 connectionstyle="angle,angleA=0,angleB=90,rad=3")
@@ -177,12 +199,13 @@ class Agent:
         :return: a list of passable nodes (by name)
         """
         nodes = self.local_environment.get_node_neighborhood(self.location)
-        potential_nodes = [node for node in nodes if self.local_environment.graph.nodes[node]["deadline"] > 0]
+        potential_nodes = [node for node in nodes if self.local_environment.get_node_deadline(node) > 0]
         edges_to_potential_nodes = self.local_environment.graph.edges(self.location)
 
         for single_edge in edges_to_potential_nodes:
-            #TODO Verify it still works on a directed graph
-            if (self.local_environment.graph[single_edge[0]][single_edge[1]]["blocked"] == True):
+
+            # if edge is blocked
+            if self.local_environment.graph[single_edge[0]][single_edge[1]]["blocked"]:
                 potential_nodes.remove(single_edge[1])
         return potential_nodes
 
@@ -190,14 +213,14 @@ class Agent:
         curr_min = 2000000000
         edge_to_ret = ["no_edge"]
         for single_edge in edges_list:
-            if (self.local_environment.graph[single_edge[0]][single_edge[1]]["weight"] < curr_min):
-                if (self.local_environment.graph[single_edge[0]][single_edge[1]]["blocked"] == False):
+            if self.local_environment.graph[single_edge[0]][single_edge[1]]["weight"] < curr_min:
+                if not self.local_environment.graph[single_edge[0]][single_edge[1]]["blocked"]:
                     curr_min = self.local_environment.graph[single_edge[0]][single_edge[1]]["weight"]
                     edge_to_ret = single_edge
 
         return edge_to_ret
 
-    def traverse_to_node(self, node,  global_env):
+    def traverse_to_node(self, node, global_env):
         """
         will move the agent to the node.
         :param node: (hashable) the name of the node
@@ -207,7 +230,7 @@ class Agent:
         self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
         self.destination = node
 
-        self.active_state = "traversing"
+        self.change_state("traversing")
         self.act(global_env)
 
     def find_reachable(self, source, node_list):
@@ -220,31 +243,28 @@ class Agent:
         """
         # get the subgraph
         # I choose here a random node, but other options will be better and slower
-        passable_subgraph = self.local_environment.get_passable_subgraph()
+        passable_subgraph = self.local_environment.get_passable_subgraph(keep_nodes=[source])
         shortest_paths = single_source_dijkstra(passable_subgraph, source)[1]
-        shortest_paths = {node:path for node, path in shortest_paths.items() if node in set(node_list)}
+        shortest_paths = {node: path for node, path in shortest_paths.items() if node in set(node_list)}
         return shortest_paths
 
 
 class Pc(Agent):
-    def __init__(self, name,  starting_node):
+    def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
         self.icon = plt.imread("icons/monkey.png")
         self.states["user_input"] = self._act_user_input
-        self.states["traversing"] = self._act_traversing
-        self.states["terminated"] = self._act_terminated
-        self.active_state = "user_input"
+        self.change_state("user_input")
         self.people_carried = 0
         self.terminate_once = 1
 
     def _act_traversing(self, global_env):
         print("remaining time: {}".format(self.time_remaining_to_dest))
         self.time_remaining_to_dest -= 1
-        if (self.time_remaining_to_dest <= 0):
+        if self.time_remaining_to_dest <= 0:
             self.location = self.destination
-            self.active_state = "user_input"
+            self.change_state("user_input")
             self.act(global_env)
-
 
     def _act_user_input(self, global_env):
         """
@@ -262,10 +282,10 @@ class Pc(Agent):
         print("letters: \"tr\" to traverse, \"p\" to pick up people, \"d\" to drop off at shelter ")
         print("letters: \"a\" to annihilate an adjacent edge, \"te\" to terminate")
         traversable_nodes = self._get_traversable_nodes()
-        options = ["tr", "p", "d", "a", "te"] # p - pick up, d - drop off, a - annihilate.
+        options = ["tr", "p", "d", "a", "te"]  # p - pick up, d - drop off, a - annihilate.
         if len(options) == 0:
             print("no option for Agent {} to traverse and is terminated".format(self.name))
-            self.active_state = "terminated"
+            self.change_state("terminated")
             return
 
         input_ok = False
@@ -292,7 +312,7 @@ class Pc(Agent):
 
             if ((user_input) == "te"):
                 input_ok = True
-                self.active_state = "terminated"
+                self.change_state("terminated")
                 self._act_terminated(global_env)
 
             if ((user_input) == "p"):
@@ -322,9 +342,7 @@ class Greedy(Agent):
         self.icon = plt.imread("icons/brainstorm.png")
         self.states["find_people"] = self._act_find_people
         self.states["find_shelter"] = self._act_find_shelter
-        self.states["traversing"] = self._act_traversing
-        self.states["terminated"] = self._act_terminated
-        self.active_state = "find_people"
+        self.change_state("find_people")
         self.people_carried = 0
         self.terminate_once = 1
 
@@ -335,7 +353,6 @@ class Greedy(Agent):
             if (self.local_environment.get_attr(self.location, "shelter") == 0):
                 real_score += K + self.people_carried
 
-
         return real_score
 
     def _act_traversing(self, global_env):
@@ -343,9 +360,9 @@ class Greedy(Agent):
         if (self.time_remaining_to_dest <= 0):
             self.location = self.destination
             if self.people_carried < 1:
-                self.active_state = "find_people"
+                self.change_state("find_people")
             else:
-                self.active_state = "find_shelter"
+                self.change_state("find_shelter")
             # self.act(global_env)
 
     # Returns a dictionary of nodes and shortest weight to nodes.
@@ -362,7 +379,7 @@ class Greedy(Agent):
 
         # terminate if there is no option
         if len(node_options) == 0:
-            self.active_state = "terminated"
+            self.change_state("terminated")
             self.score -= self.people_carried
             self.act(global_env)
             return
@@ -377,8 +394,8 @@ class Greedy(Agent):
             # find the shortest path from the filtered ones
 
             shortest_path = shortest_path_algorithm(self.local_environment.graph, self.location, node_option,
-                                                   weight="weight")
-            curr_path_edges = zip(shortest_path,shortest_path[1:])
+                                                    weight="weight")
+            curr_path_edges = zip(shortest_path, shortest_path[1:])
             for edge in curr_path_edges:
                 curr_path_length += self.local_environment.graph[edge[0]][edge[1]]["weight"]
 
@@ -404,7 +421,7 @@ class Greedy(Agent):
             # pickup people
             self.people_carried += people_in_location
             global_env.change_attr(self.location, "people", 0)
-            self.active_state = "find_shelter"
+            self.change_state("find_shelter")
             self.act(global_env)
 
         else:
@@ -423,7 +440,7 @@ class Greedy(Agent):
             self.score += self.people_carried
             self.people_carried = 0
             global_env.change_attr(self.location, "people", 0)
-            self.active_state = "find_people"
+            self.change_state("find_people")
             self.act(global_env)
 
         else:
@@ -440,18 +457,18 @@ class Greedy(Agent):
 class Annihilator(Agent):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
-        self.wait_time = 0 #TODO change wait time.
+        self.wait_time = 0
         self.icon = plt.imread("icons/thunder-skull.png")
         self.states["annihilate"] = self._act_annihilate
         self.states["traversing"] = self._act_traversing
         self.states["wait"] = self._act_wait
-        self.active_state = "wait"
+        self.change_state("wait")
 
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
         if self.time_remaining_to_dest <= 0:
             self.location = self.destination
-            self.active_state = "annihilate"
+            self.change_state("annihilate")
             # self.act(global_env)
 
     def _act_annihilate(self, global_env):
@@ -471,29 +488,28 @@ class Annihilator(Agent):
         new_min_edge = self.get_min_edge(self.local_environment.graph.edges(self.location))
         if (new_min_edge[0] == "no_edge"):
             print("no option for Agent {} to traverse and is terminated".format(self.name))
-            self.active_state = "terminated"
+            self.change_state("terminated")
             return
 
         print("destroyer moved to node: {}".format(new_min_edge[1]))
         self.traverse_to_node(new_min_edge[1], global_env)
 
-
-
     def _act_wait(self, global_env):
-        if (global_env.time >= self.wait_time):
-            self.active_state = "annihilate"
+        if global_env.time >= self.wait_time:
+            self.change_state("annihilate")
             self._act_annihilate(global_env)
 
 
 class AStarAgent(Greedy):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
-        self.active_state = "Heuristic_Calculation"
-        self.states["Heuristic_Calculation"] = self._act_heuristic
-        self.states["Traversing"] = self._act_traversing
+        self.states["heuristic_calculation"] = self._act_heuristic
+        self.states["finished_traversing"] = self._act_finished_traversing
+        self.change_state("heuristic_calculation")
         self.path = None
-        self.destination_index = 0  # this is an index in the self.path
-    ##Checks if current state was terminate. If it wasn't, expand nodes.
+        self.destination_index = 1 # this is an index in the self.path
+        self.num_of_expansions = 0
+
     """
         Stages:
         while true:
@@ -505,17 +521,25 @@ class AStarAgent(Greedy):
 
     def calc_f(self):
         score = self.heuristic() + self.calculate_real_score()
-        #print("Heuristic score currently calculated: {}".format(self.heuristic()))
-        #print("Real score currently calculated: {}".format(self.calculate_real_score()))
+        # print("Heuristic score currently calculated: {}".format(self.heuristic()))
+        # print("Real score currently calculated: {}".format(self.calculate_real_score()))
         return score
 
     def _act_heuristic(self, global_env):
-        self.path = self.initilizer()
-        print("The heuristic agent will now take path: {}".format(self.path))
-        self.active_state = "traversing"
+        self.path = self.calculate_astar_path()
+        print("The heuristic agent will now take path:"
+              " {} after {} expansions".format(self.path, self.num_of_expansions))
+
+        # if remaining path (including current node) is smaller then one, it has finished traversing
+        if len(self.path) <= 1:
+            self.change_state("finished_traversing")
+            self.act(global_env)
+            return
+
+        self.traverse_to_node(self.path[1], global_env)
         self.act(global_env)
 
-    def traverse_to_node(self, node,  global_env):
+    def traverse_to_node(self, node, global_env):
         """
         will move the agent to the node.
         :param node: (hashable) the name of the node
@@ -524,28 +548,38 @@ class AStarAgent(Greedy):
         """
         self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
         self.destination = node
-
-        self.active_state = "traversing"
+        self.change_state("traversing")
 
     def _act_traversing(self, global_env):
 
-        # if self.destination_index==0:
-
-
         self.time_remaining_to_dest -= 1
-        if (self.time_remaining_to_dest <= 0):
-            try:
-                self.destination_index += 1
-                self.location = self.destination
-                self.traverse_to_node(self.path[self.destination_index], global_env)
-                if self.destination_index == 1:
-                    self.act(global_env)
+        if self.time_remaining_to_dest <= 0:
 
-            except IndexError:
-                self.active_state = "terminated"
-                print("Astar agent score is: {}".format(self.calc_f()))
+            # break if trivial path
+            if self.location == self.destination:
+                self.change_state("terminated")
                 return
 
+            self.location = self.destination
+            self._actions_for_arriving_at_node()
+
+            # if remaining path (including current node) is smaller then one, it has finished traversing
+            if len(self.path[self.destination_index:]) <= 1:
+                self.change_state("finished_traversing")
+                self.act(global_env)
+
+            # else, will continue the path
+            else:
+                self.destination_index += 1
+                self.traverse_to_node(self.path[self.destination_index], global_env)
+                if self.location == self.destination:
+                    self.change_state("terminated")
+
+    def _actions_for_arriving_at_node(self):
+        """
+        does all the actions after arriving at the node at self.location
+        :return: None
+        """
         if self.local_environment.get_attr(self.location, "people") > 0:
             self.carry_num += self.local_environment.get_attr(self.location, "people")
             self.local_environment.change_attr(self.location, "people", 0)
@@ -554,9 +588,11 @@ class AStarAgent(Greedy):
             self.people_saved += self.carry_num
             self.carry_num = 0
 
+    def _act_finished_traversing(self, global_env):
+        self.change_state("terminated")
+        print("Astar agent score is: {}".format(self.calc_f()))
 
-
-    def initilizer(self):
+    def calculate_astar_path(self):
         print("the time is: {}".format(self.curr_time))
         """
         minHeap = create_empty_heap() #to be sorted by f
@@ -564,14 +600,15 @@ class AStarAgent(Greedy):
         return main_loop(minHeap) ##expect a path
         ##If the path is empty, it means terminate.
         """
-        self.destination_index = 0
+        self.num_of_expansions = 0
+        self.destination_index = 1
         state_score_heap = []
 
         # first is f, second is agent, third is current path
         heapq.heappush(state_score_heap, (self.calc_f(), copy.deepcopy(self), [self.location]))
-        return self.main_loop(state_score_heap)
+        return self._astar_main_loop(state_score_heap)
 
-    def main_loop(self, minHeap):
+    def _astar_main_loop(self, min_heap):
         """
         expansions = 0
         while(curr_expansion < limit):
@@ -585,14 +622,20 @@ class AStarAgent(Greedy):
             minHeap.add(expand_Node(self, destination, weight, termiante = True), curr_node.append(destination))
             expansions += 1
         """
-        expansions = 0
-        while (expansions < expansion_limit):
-            curr_node = heapq.heappop(minHeap)
+        while self.num_of_expansions < expansion_limit:
+            curr_node = heapq.heappop(min_heap)
+
             if curr_node[1].active_state == "terminated":
                 return curr_node[2]
-            self.expand_node(minHeap, curr_node)
 
-    def expand_node(self, minHeap, curr_node):
+            self.num_of_expansions += 1
+            self._expand_node(min_heap, curr_node)
+
+        print("expansion limit of {} was exceeded."
+              " Agent {} has failed and is now terminated".format(expansion_limit, self.name))
+        return []
+
+    def _expand_node(self, min_heap, curr_node):
         """
         if not terminated, return  h
         if terminated, return g
@@ -600,15 +643,13 @@ class AStarAgent(Greedy):
 
         agent = curr_node[1]
         current_route = curr_node[2]
-        #agent.print_state(False)
-        #print(current_route)
-        #print("-----------------------------------")
         # create new agents for every neighbors
 
-        neighbors = agent.local_environment.get_passable_subgraph(agent.curr_time)[agent.location]
+        neighbors = agent.local_environment.get_passable_subgraph(agent.curr_time,
+                                                                  keep_nodes=[agent.location])[agent.location]
         for neighbor_node, neighbor_data in neighbors.items():
             if ((agent.curr_time + neighbor_data["weight"]) >
-                    agent.local_environment.get_attr(neighbor_node, "deadline")):
+                    agent.local_environment.get_node_deadline(neighbor_node)):
                 continue
             new_agent = copy.deepcopy(agent)
             new_agent.location = neighbor_node
@@ -616,7 +657,7 @@ class AStarAgent(Greedy):
 
             # if node has people in it
             if new_agent.location in set(new_agent.nodes_containing_people):
-                new_agent.carry_num += new_agent.local_environment.get_attr(new_agent.location,"people")
+                new_agent.carry_num += new_agent.local_environment.get_attr(new_agent.location, "people")
                 new_nodes_containing_people = set(new_agent.nodes_containing_people)
                 new_nodes_containing_people.remove(neighbor_node)
                 new_agent.nodes_containing_people = list(new_nodes_containing_people)
@@ -629,9 +670,36 @@ class AStarAgent(Greedy):
             # add new agent to the heap
             new_route = copy.deepcopy(current_route)
             new_route.append(neighbor_node)
-            heapq.heappush(minHeap, (new_agent.calc_f(), new_agent, new_route))
+            heapq.heappush(min_heap, (new_agent.calc_f(), new_agent, new_route))
 
         # add new agent for the case what it is terminated here
         new_agent = copy.deepcopy(agent)
-        new_agent.active_state = "terminated"
-        heapq.heappush(minHeap, (new_agent.calc_f(), new_agent, current_route))
+        new_agent.change_state("terminated")
+        heapq.heappush(min_heap, (new_agent.calc_f(), new_agent, current_route))
+
+
+class LimitedAStarAgent(AStarAgent):
+    def __init__(self, name, starting_node):
+        super().__init__(name, starting_node)
+        self.states["heuristic_calculation"] = self._act_heuristic
+        self.expansion_limit = 5
+
+    def _astar_main_loop(self, min_heap):
+
+        while self.num_of_expansions < self.expansion_limit:
+
+            curr_node = heapq.heappop(min_heap)
+            if curr_node[1].active_state == "terminated":
+                return curr_node[2]
+
+            self.num_of_expansions += 1
+            self._expand_node(min_heap, curr_node)
+
+        return heapq.heappop(min_heap)[2][:2]
+
+
+    def _act_finished_traversing(self, global_env):
+        if len(self.path) <= 1:
+            self.change_state("terminated")
+        else:
+            self.change_state("heuristic_calculation")

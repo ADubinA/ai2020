@@ -29,3 +29,13 @@ TODO
 12/11/19 (Aviv)
 
 1. --- DONE ---Currently shortest path is selected by number of edges, not length as expressed by weight, changed to take the weight into account.
+
+21/11/19 (Almog)
+1. replace every self.active state with the self.change_state function. we had a few errors with not naming
+ right out states. change_state has error checking in it. DO NOT change an agent state without it.
+2. change name from self.initializer to calcualte_astar_path, and added "__" for the private function of AStarAgent
+3. calculate_astar_path will return [] if expansion exceeds the max expansion 
+4. update_environment will have a time attribute for advancing time by other then 1
+5. deadline attribute is not updated. to get the deadline, one should use env.get_node_deadline
+6. limited a star is now a thing that is working.
+TODO: add things so expansion takes real time (N*T) and the testing unit
