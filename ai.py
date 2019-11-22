@@ -1,12 +1,15 @@
 import matplotlib.pyplot as plt
 import heapq
 import copy
+import math
 from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 
 K = 2
-expansion_limit = 1000000
+L = 10
+expansion_limit = 100000
+Time_Per_Expansion = 0.0
 STATE_LIST = ["no_op", "terminated", "traversing",
               "user_input",
               "find_people", "find_shelter",
@@ -35,6 +38,7 @@ class Agent:
         self.carry_num = 0  # number of people currently been carried
         self.people_saved = 0
         self.curr_time = 0
+        self.time_to_wait = 0
         self.nodes_containing_people = []
         # ------------------------------------
 
@@ -505,24 +509,27 @@ class AStarAgent(Greedy):
         super().__init__(name, starting_node)
         self.states["heuristic_calculation"] = self._act_heuristic
         self.states["finished_traversing"] = self._act_finished_traversing
+        self.states["wait"] = self._act_wait
         self.change_state("heuristic_calculation")
         self.path = None
         self.destination_index = 1 # this is an index in the self.path
         self.num_of_expansions = 0
 
-    """
-        Stages:
-        while true:
-            1. Pop the first state in the state-min-heap, calculated by score.
-            2. If it's terminate, return the path leading up to it.
-            3. If it's not, expand it by checking all neighbhors+immediate terminate
-            4. Add each expansion to the min heap
-    """
+    def _act_wait(self, global_env):
+        # if remaining path (including current node) is smaller then one, it has finished traversing
+        self.time_to_wait -= 1
+        if (self.time_to_wait < 1):
+            if len(self.path) <= 1:
+                self.change_state("finished_traversing")
+                self.act(global_env)
+                return
+
+            self.traverse_to_node(self.path[1], global_env)
+            self.act(global_env)
+
 
     def calc_f(self):
         score = self.heuristic() + self.calculate_real_score()
-        # print("Heuristic score currently calculated: {}".format(self.heuristic()))
-        # print("Real score currently calculated: {}".format(self.calculate_real_score()))
         return score
 
     def _act_heuristic(self, global_env):
@@ -530,31 +537,19 @@ class AStarAgent(Greedy):
         print("The heuristic agent will now take path:"
               " {} after {} expansions".format(self.path, self.num_of_expansions))
 
-        # if remaining path (including current node) is smaller then one, it has finished traversing
-        if len(self.path) <= 1:
-            self.change_state("finished_traversing")
-            self.act(global_env)
-            return
-
-        self.traverse_to_node(self.path[1], global_env)
+        self.time_to_wait = math.ceil(self.num_of_expansions*Time_Per_Expansion)
+        print("The heuristic agent will now wait for {} time due to calculations.".format(self.time_to_wait))
+        self.change_state("wait")
         self.act(global_env)
 
     def traverse_to_node(self, node, global_env):
-        """
-        will move the agent to the node.
-        :param node: (hashable) the name of the node
-        :param global_env:
-        :return:
-        """
         self.time_remaining_to_dest = global_env.graph.get_edge_data(self.location, node)["weight"]
         self.destination = node
         self.change_state("traversing")
 
     def _act_traversing(self, global_env):
-
         self.time_remaining_to_dest -= 1
         if self.time_remaining_to_dest <= 0:
-
             # break if trivial path
             if self.location == self.destination:
                 self.change_state("terminated")
@@ -576,10 +571,6 @@ class AStarAgent(Greedy):
                     self.change_state("terminated")
 
     def _actions_for_arriving_at_node(self):
-        """
-        does all the actions after arriving at the node at self.location
-        :return: None
-        """
         if self.local_environment.get_attr(self.location, "people") > 0:
             self.carry_num += self.local_environment.get_attr(self.location, "people")
             self.local_environment.change_attr(self.location, "people", 0)
@@ -590,16 +581,15 @@ class AStarAgent(Greedy):
 
     def _act_finished_traversing(self, global_env):
         self.change_state("terminated")
-        print("Astar agent score is: {}".format(self.calc_f()))
+        score = self.people_saved
+        if not global_env.get_attr(self.location, "shelter") > 0 or \
+                not (global_env.get_attr(self.location, "deadline") > global_env.time):
+            score -= (K + self.people_carried)
+        self.score = score
+        print("Astar agent score is: {}".format(score))
 
     def calculate_astar_path(self):
         print("the time is: {}".format(self.curr_time))
-        """
-        minHeap = create_empty_heap() #to be sorted by f
-        minHeap.add(initial state)
-        return main_loop(minHeap) ##expect a path
-        ##If the path is empty, it means terminate.
-        """
         self.num_of_expansions = 0
         self.destination_index = 1
         state_score_heap = []
@@ -609,19 +599,6 @@ class AStarAgent(Greedy):
         return self._astar_main_loop(state_score_heap)
 
     def _astar_main_loop(self, min_heap):
-        """
-        expansions = 0
-        while(curr_expansion < limit):
-            curr_node = minHeap.pop()
-            #if destinatin is -1, it means terminate
-            neighbhors = get_neighbhors(curr_node)
-            for neighbhor in neighbhors:
-                minHeap.add(expand_node(self, destination, weight)
-
-            #if destinatin is -1, it means terminate
-            minHeap.add(expand_Node(self, destination, weight, termiante = True), curr_node.append(destination))
-            expansions += 1
-        """
         while self.num_of_expansions < expansion_limit:
             curr_node = heapq.heappop(min_heap)
 
@@ -682,16 +659,13 @@ class LimitedAStarAgent(AStarAgent):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
         self.states["heuristic_calculation"] = self._act_heuristic
-        self.expansion_limit = 5
+        self.expansion_limit = L
 
     def _astar_main_loop(self, min_heap):
-
         while self.num_of_expansions < self.expansion_limit:
-
             curr_node = heapq.heappop(min_heap)
             if curr_node[1].active_state == "terminated":
                 return curr_node[2]
-
             self.num_of_expansions += 1
             self._expand_node(min_heap, curr_node)
 
@@ -703,3 +677,11 @@ class LimitedAStarAgent(AStarAgent):
             self.change_state("terminated")
         else:
             self.change_state("heuristic_calculation")
+
+class PureHeuristicAStarAgent(AStarAgent):
+    def __init__(self, name, starting_node):
+        super().__init__(name, starting_node)
+
+    def calc_f(self):
+        score = self.heuristic()
+        return score

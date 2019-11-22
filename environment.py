@@ -5,11 +5,12 @@ from tools.parser import Parser
 from ai import Pc
 from ai import Annihilator
 from ai import Greedy
-from ai import LimitedAStarAgent as SelectedAgent
+from ai import LimitedAStarAgent
+from ai import AStarAgent as SelectedAgent
+from ai import PureHeuristicAStarAgent #as SelectedAgent
 
 
 class Environment:
-
     def __init__(self, file_name):
         self.graph = nx.Graph()
         self.people_in_graph = 0
@@ -24,7 +25,7 @@ class Environment:
             self.add_edge(edge["from"], edge["to"], **edge)
 
         self.attributes = []
-        self.agents = [SelectedAgent("420AssMaster_69", 1)]
+        self.agents = [SelectedAgent("Curr_Agent", 1)]
 
         # update the world for every agent at startup
         for agent in self.agents:

@@ -4,12 +4,9 @@ from environment import Environment
 def main(save_dir, seconds_per_tick, max_tick=1000):
 
     env = Environment(save_dir)
-
-
     iteration = 0
     while iteration < max_tick:
         env.display()
-
         if env.is_terminated():
             break
 
@@ -20,4 +17,4 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
 
 if __name__ == "__main__":
-    main("test_graph_complex.json",0.25 )
+    main("test_graph_complex.json", 0.5)
