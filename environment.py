@@ -5,7 +5,7 @@ from tools.parser import Parser
 from ai import Pc
 from ai import Annihilator
 from ai import Greedy
-from ai import LimitedAStarAgent
+from ai import LimitedAStarAgent #as SelectedAgent
 from ai import AStarAgent as SelectedAgent
 from ai import PureHeuristicAStarAgent #as SelectedAgent
 

@@ -9,7 +9,7 @@ from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 K = 2
 L = 10
 expansion_limit = 100000
-Time_Per_Expansion = 0.0
+Time_Per_Expansion = 0.1
 STATE_LIST = ["no_op", "terminated", "traversing",
               "user_input",
               "find_people", "find_shelter",
@@ -510,6 +510,7 @@ class AStarAgent(Greedy):
         self.states["heuristic_calculation"] = self._act_heuristic
         self.states["finished_traversing"] = self._act_finished_traversing
         self.states["wait"] = self._act_wait
+        self.states["terminated"] = self._act_terminated
         self.change_state("heuristic_calculation")
         self.path = None
         self.destination_index = 1 # this is an index in the self.path
@@ -518,7 +519,7 @@ class AStarAgent(Greedy):
     def _act_wait(self, global_env):
         # if remaining path (including current node) is smaller then one, it has finished traversing
         self.time_to_wait -= 1
-        if (self.time_to_wait < 1):
+        if (self.time_to_wait < 0):
             if len(self.path) <= 1:
                 self.change_state("finished_traversing")
                 self.act(global_env)
@@ -527,6 +528,13 @@ class AStarAgent(Greedy):
             self.traverse_to_node(self.path[1], global_env)
             self.act(global_env)
 
+    def _act_terminated(self, global_env):
+        print("act terminated you cunt")
+        score = self.people_saved
+        if not global_env.get_attr(self.location, "shelter") > 0 or \
+                not (global_env.get_attr(self.location, "deadline") > global_env.time):
+            score -= (K + self.people_carried)
+        self.score = score
 
     def calc_f(self):
         score = self.heuristic() + self.calculate_real_score()
@@ -550,9 +558,18 @@ class AStarAgent(Greedy):
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
         if self.time_remaining_to_dest <= 0:
+            # perform checks if either destination or source were destroyed while travelling
+            print("source deadline: {}, global_time: {}".format(global_env.get_attr(self.location, "deadline"), global_env.time))
+            if global_env.get_attr(self.location, "deadline") < global_env.time or \
+                    global_env.get_attr(self.destination, "deadline") < global_env.time:
+                self.change_state("terminated")
+                self.act(global_env)
+                return
+
             # break if trivial path
             if self.location == self.destination:
                 self.change_state("terminated")
+                self.act(global_env)
                 return
 
             self.location = self.destination
