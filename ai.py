@@ -519,7 +519,14 @@ class AStarAgent(Greedy):
     def _act_wait(self, global_env):
         # if remaining path (including current node) is smaller then one, it has finished traversing
         self.time_to_wait -= 1
-        if (self.time_to_wait < 0):
+
+        # checks if while waiting, the place you're waiting at got destroyed
+        if global_env.get_attr(self.location, "deadline") <= global_env.time:
+            self.change_state("terminated")
+            self.act(global_env)
+        print("the time is: {}".format(global_env.time))
+        # handles the time it waits to calculate
+        if self.time_to_wait < 0:
             if len(self.path) <= 1:
                 self.change_state("finished_traversing")
                 self.act(global_env)
@@ -529,11 +536,9 @@ class AStarAgent(Greedy):
             self.act(global_env)
 
     def _act_terminated(self, global_env):
-        print("act terminated you cunt")
         score = self.people_saved
-        if not global_env.get_attr(self.location, "shelter") > 0 or \
-                not (global_env.get_attr(self.location, "deadline") > global_env.time):
-            score -= (K + self.people_carried)
+        if global_env.get_attr(self.location, "shelter") == 0:
+            score -= (K + self.carry_num)
         self.score = score
 
     def calc_f(self):
@@ -559,9 +564,7 @@ class AStarAgent(Greedy):
         self.time_remaining_to_dest -= 1
         if self.time_remaining_to_dest <= 0:
             # perform checks if either destination or source were destroyed while travelling
-            print("source deadline: {}, global_time: {}".format(global_env.get_attr(self.location, "deadline"), global_env.time))
-            if global_env.get_attr(self.location, "deadline") < global_env.time or \
-                    global_env.get_attr(self.destination, "deadline") < global_env.time:
+            if global_env.get_attr(self.destination, "deadline") <= global_env.time:
                 self.change_state("terminated")
                 self.act(global_env)
                 return
@@ -606,7 +609,6 @@ class AStarAgent(Greedy):
         print("Astar agent score is: {}".format(score))
 
     def calculate_astar_path(self):
-        print("the time is: {}".format(self.curr_time))
         self.num_of_expansions = 0
         self.destination_index = 1
         state_score_heap = []

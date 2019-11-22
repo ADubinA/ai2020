@@ -92,6 +92,7 @@ class Environment:
         :return: None
         """
         # each agent act on the world at his turn
+
         for agent in self.agents:
             agent.act(self)
 
@@ -100,6 +101,7 @@ class Environment:
             agent.set_environment(self)
             agent.curr_time += 1
         self._update_environment()
+
 
     def get_node_deadline(self, node, after_time=0):
         """
