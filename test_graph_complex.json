@@ -9,7 +9,7 @@
             },
                         {
               "name": 2,
-              "deadline": 1,
+              "deadline": 10,
               "shelter": false,
               "people": 2
             },

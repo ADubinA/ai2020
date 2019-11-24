@@ -111,7 +111,7 @@ class Environment:
          after_time will increate the time by this int
         :return: the true deadline
         """
-        return max(0, self.get_attr(node, "deadline") - after_time - self.time)
+        return max(-1, self.get_attr(node, "deadline") - after_time)
 
     def get_passable_subgraph(self, after_time=0, keep_nodes=None):
         """

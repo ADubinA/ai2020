@@ -7,9 +7,9 @@ from networkx.algorithms.shortest_paths.generic import shortest_path as shortest
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 
 K = 2
-L = 10
+L = 1
 expansion_limit = 100000
-Time_Per_Expansion = 0.1
+Time_Per_Expansion = 0
 STATE_LIST = ["no_op", "terminated", "traversing",
               "user_input",
               "find_people", "find_shelter",
@@ -90,13 +90,17 @@ class Agent:
         """
 
     def heuristic(self):
+        #problem here, if there are no reachable nodes than the heuristic malfunctions
         heuristic_value = 0
         if self.active_state != "terminated":
-            people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people")
+            for people_node in self.nodes_containing_people:
+                heuristic_value += self.local_environment.get_attr(people_node, "people")
+            people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people", time = self.curr_time)
             for people_node, people_path in people_paths.items():
                 if people_path is None:
+                    continue
                     # if there is no path add to the heuristics
-                    heuristic_value += self.local_environment.get_attr(people_node, "people")
+                    #heuristic_value -= self.local_environment.get_attr(people_node, "people")
 
                 else:
                     # get all the shelter paths
@@ -110,8 +114,10 @@ class Agent:
                     shelter_paths = [shelter_path for _, shelter_path in shelter_paths.items() if
                                      shelter_path is not None]
                     # if there
-                    if len(shelter_paths) < 1:
-                        heuristic_value += self.local_environment.get_attr(people_node, "people")
+                    #if len(shelter_paths) < 1:
+                     #   heuristic_value -= self.local_environment.get_attr(people_node, "people")
+                    if len(shelter_paths) >= 1:
+                        heuristic_value -= self.local_environment.get_attr(people_node, "people")
         return heuristic_value
 
     def filter_savable(self, source, nodes, key, time=0):
@@ -128,7 +134,7 @@ class Agent:
             time_at_path = time + self.local_environment.calculate_path_time(path)
 
             # if it does, add num of people in that node to heuristic
-            if self.local_environment.get_node_deadline(node, time_at_path) > 0:
+            if self.local_environment.get_node_deadline(node, time_at_path) < 0:
                 savable_path[node] = None
 
         return savable_path
@@ -203,7 +209,7 @@ class Agent:
         :return: a list of passable nodes (by name)
         """
         nodes = self.local_environment.get_node_neighborhood(self.location)
-        potential_nodes = [node for node in nodes if self.local_environment.get_node_deadline(node) > 0]
+        potential_nodes = [node for node in nodes if self.local_environment.get_node_deadline(node) >= 0]
         edges_to_potential_nodes = self.local_environment.graph.edges(self.location)
 
         for single_edge in edges_to_potential_nodes:
@@ -354,9 +360,9 @@ class Greedy(Agent):
         real_score = 0
         if (self.active_state == "terminated"):
             real_score = self.local_environment.people_in_graph - self.people_saved
+            #If you're not in a shelter, pay a penalty
             if (self.local_environment.get_attr(self.location, "shelter") == 0):
                 real_score += K + self.people_carried
-
         return real_score
 
     def _act_traversing(self, global_env):
@@ -603,7 +609,7 @@ class AStarAgent(Greedy):
         self.change_state("terminated")
         score = self.people_saved
         if not global_env.get_attr(self.location, "shelter") > 0 or \
-                not (global_env.get_attr(self.location, "deadline") > global_env.time):
+                not (global_env.get_attr(self.location, "deadline") >= global_env.time):
             score -= (K + self.people_carried)
         self.score = score
         print("Astar agent score is: {}".format(score))
@@ -620,10 +626,10 @@ class AStarAgent(Greedy):
     def _astar_main_loop(self, min_heap):
         while self.num_of_expansions < expansion_limit:
             curr_node = heapq.heappop(min_heap)
-
+            print("Agent score: {}".format(curr_node[0]))
+            print("Agent path: {}".format(curr_node[2]))
             if curr_node[1].active_state == "terminated":
                 return curr_node[2]
-
             self.num_of_expansions += 1
             self._expand_node(min_heap, curr_node)
 
@@ -667,10 +673,16 @@ class AStarAgent(Greedy):
             new_route = copy.deepcopy(current_route)
             new_route.append(neighbor_node)
             heapq.heappush(min_heap, (new_agent.calc_f(), new_agent, new_route))
+            print("Agent is terminated: {}".format(new_agent.active_state == "terminated"))
+            print("Agent score: {}".format(new_agent.calc_f()))
+            print("Agent path: {}".format(new_route))
 
         # add new agent for the case what it is terminated here
         new_agent = copy.deepcopy(agent)
         new_agent.change_state("terminated")
+        print("Agent is terminated: {}".format(new_agent.active_state == "terminated"))
+        print("Agent score: {}".format(new_agent.calc_f()))
+        print("Agent path: {}".format(current_route))
         heapq.heappush(min_heap, (new_agent.calc_f(), new_agent, current_route))
 
 
@@ -687,13 +699,18 @@ class LimitedAStarAgent(AStarAgent):
                 return curr_node[2]
             self.num_of_expansions += 1
             self._expand_node(min_heap, curr_node)
-
         return heapq.heappop(min_heap)[2][:2]
 
 
     def _act_finished_traversing(self, global_env):
         if len(self.path) <= 1:
             self.change_state("terminated")
+            score = self.people_saved
+            print("self location: {}".format(self.location))
+            if not global_env.get_attr(self.location, "shelter") > 0 or \
+                    not (global_env.get_attr(self.location, "deadline") >= global_env.time):
+                score -= (K + self.people_carried)
+            self.score = score
         else:
             self.change_state("heuristic_calculation")
 
