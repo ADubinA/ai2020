@@ -3,25 +3,19 @@
           [
             {
               "name": 1,
-              "deadline": 10,
+              "deadline": 4,
               "shelter": true,
               "people": 0
             },
                         {
               "name": 2,
-              "deadline": 10,
+              "deadline": 2,
               "shelter": false,
               "people": 2
             },
                         {
               "name": 3,
-              "deadline": 11,
-              "shelter": true,
-              "people": 0
-            },
-                        {
-              "name": 4,
-              "deadline": 10,
+              "deadline": 2,
               "shelter": false,
               "people": 2
             }
@@ -35,27 +29,9 @@
       "blocked": false
     },
     {
-      "from": 3,
-      "to": 4,
-      "weight": 1,
-      "blocked": false
-    },
-    {
-      "from": 2,
-      "to": 3,
-      "weight": 3,
-      "blocked": false
-    },
-        {
       "from": 1,
       "to": 3,
-      "weight": 4,
-      "blocked": false
-    },
-    {
-      "from": 2,
-      "to": 4,
-      "weight": 8,
+      "weight": 2,
       "blocked": false
     }
   ]

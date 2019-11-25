@@ -6,7 +6,7 @@ from ai import Pc
 from ai import Annihilator
 from ai import Greedy
 from ai import LimitedAStarAgent #as SelectedAgent
-from ai import AStarAgent as SelectedAgent
+from ai import LimitedAStarAgent as SelectedAgent
 from ai import PureHeuristicAStarAgent #as SelectedAgent
 
 
@@ -14,6 +14,7 @@ class Environment:
     def __init__(self, file_name):
         self.graph = nx.Graph()
         self.people_in_graph = 0
+        self.time = 0
 
         # parser actions
         parser_instance = Parser(file_name)
@@ -31,7 +32,6 @@ class Environment:
         for agent in self.agents:
             agent.set_environment(self)
 
-        self.time = 0
         # raise NotImplemented()
 
     def add_vertex(self, **kwargs):
@@ -213,7 +213,7 @@ class Environment:
         custom_node_attrs = {}
         for node, attr in node_attrs.items():
             if dict_key == "deadline":
-                attr = self.get_node_deadline(node)
+                attr = self.get_node_deadline(node, self.time)
             custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
 
         nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)

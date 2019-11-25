@@ -1,0 +1,116 @@
+{
+  "vertexes":
+          [
+            {
+              "name": 1,
+              "deadline": 4,
+              "shelter": false,
+              "people": 0
+            },
+                        {
+              "name": 2,
+              "deadline": 500,
+              "shelter": true,
+              "people": 0
+            },
+                        {
+              "name": 3,
+              "deadline": 500,
+              "shelter": false,
+              "people": 50
+            },
+                        {
+              "name": 4,
+              "deadline": 3,
+              "shelter": false,
+              "people": 2
+            },
+                        {
+              "name": 5,
+              "deadline": 4,
+              "shelter": false,
+              "people": 2
+            },
+                        {
+              "name": 6,
+              "deadline": 5,
+              "shelter": false,
+              "people": 2
+            },
+                        {
+              "name": 7,
+              "deadline": 6,
+              "shelter": false,
+              "people": 2
+            },
+                        {
+              "name": 8,
+              "deadline": 7,
+              "shelter": false,
+              "people": 2
+            },
+                        {
+              "name": 9,
+              "deadline": 8,
+              "shelter": false,
+              "people": 2
+            }
+          ],
+  "edges":
+  [
+    {
+      "from": 1,
+      "to": 2,
+      "weight": 1,
+      "blocked": false
+    },
+    {
+      "from": 2,
+      "to": 3,
+      "weight": 1,
+      "blocked": false
+    },
+    {
+      "from": 2,
+      "to": 4,
+      "weight": 1,
+      "blocked": false
+    },
+    {
+      "from": 4,
+      "to": 5,
+      "weight": 1,
+      "blocked": false
+    },
+    {
+      "from": 5,
+      "to": 6,
+      "weight": 1,
+      "blocked": false
+    },
+    {
+      "from": 6,
+      "to": 7,
+      "weight": 1,
+      "blocked": false
+    },
+    {
+      "from": 7,
+      "to": 8,
+      "weight": 1,
+      "blocked": false
+    },
+    {
+      "from": 8,
+      "to": 9,
+      "weight": 1,
+      "blocked": false
+    },
+    {
+      "from": 9,
+      "to": 2,
+      "weight": 2,
+      "blocked": false
+    }
+  ]
+}

@@ -7,9 +7,9 @@ from networkx.algorithms.shortest_paths.generic import shortest_path as shortest
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 
 K = 2
-L = 1
+L = 2
 expansion_limit = 100000
-Time_Per_Expansion = 0
+Time_Per_Expansion = 0.0
 STATE_LIST = ["no_op", "terminated", "traversing",
               "user_input",
               "find_people", "find_shelter",
@@ -143,6 +143,7 @@ class Agent:
         self.local_environment = global_env
         self.nodes_containing_people = [node for node in global_env.graph.nodes if
                                         global_env.get_attr(node, "people") > 0]
+        self.curr_time = global_env.time
 
     def act(self, global_env):
         print("agent {} is in state {} and acting at time {}".format(self.name,
@@ -521,6 +522,7 @@ class AStarAgent(Greedy):
         self.path = None
         self.destination_index = 1 # this is an index in the self.path
         self.num_of_expansions = 0
+        self.expansion_limit = 0 # this is not used in astar
 
     def _act_wait(self, global_env):
         # if remaining path (including current node) is smaller then one, it has finished traversing
@@ -553,10 +555,10 @@ class AStarAgent(Greedy):
 
     def _act_heuristic(self, global_env):
         self.path = self.calculate_astar_path()
+        self.time_to_wait = math.ceil(self.num_of_expansions*Time_Per_Expansion)
         print("The heuristic agent will now take path:"
               " {} after {} expansions".format(self.path, self.num_of_expansions))
 
-        self.time_to_wait = math.ceil(self.num_of_expansions*Time_Per_Expansion)
         print("The heuristic agent will now wait for {} time due to calculations.".format(self.time_to_wait))
         self.change_state("wait")
         self.act(global_env)
@@ -646,7 +648,6 @@ class AStarAgent(Greedy):
         agent = curr_node[1]
         current_route = curr_node[2]
         # create new agents for every neighbors
-
         neighbors = agent.local_environment.get_passable_subgraph(agent.curr_time,
                                                                   keep_nodes=[agent.location])[agent.location]
         for neighbor_node, neighbor_data in neighbors.items():
@@ -674,6 +675,7 @@ class AStarAgent(Greedy):
             new_route.append(neighbor_node)
             heapq.heappush(min_heap, (new_agent.calc_f(), new_agent, new_route))
             print("Agent is terminated: {}".format(new_agent.active_state == "terminated"))
+            print("Agent time is:{}".format(new_agent.curr_time))
             print("Agent score: {}".format(new_agent.calc_f()))
             print("Agent path: {}".format(new_route))
 
@@ -691,6 +693,18 @@ class LimitedAStarAgent(AStarAgent):
         super().__init__(name, starting_node)
         self.states["heuristic_calculation"] = self._act_heuristic
         self.expansion_limit = L
+
+    def calculate_astar_path(self):
+        self.num_of_expansions = 0
+        self.destination_index = 1
+        state_score_heap = []
+
+        # first is f, second is agent, third is current path
+        copy_agent = copy.deepcopy(self)
+        copy_agent.curr_time += self.expansion_limit*Time_Per_Expansion
+
+        heapq.heappush(state_score_heap, (self.calc_f(), copy_agent, [self.location]))
+        return self._astar_main_loop(state_score_heap)
 
     def _astar_main_loop(self, min_heap):
         while self.num_of_expansions < self.expansion_limit:
@@ -713,6 +727,7 @@ class LimitedAStarAgent(AStarAgent):
             self.score = score
         else:
             self.change_state("heuristic_calculation")
+
 
 class PureHeuristicAStarAgent(AStarAgent):
     def __init__(self, name, starting_node):

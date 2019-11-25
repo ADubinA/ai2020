@@ -3,25 +3,25 @@
           [
             {
               "name": 1,
-              "deadline": 7,
+              "deadline": 10,
               "shelter": true,
               "people": 0
             },
                         {
               "name": 2,
-              "deadline": 5,
+              "deadline": 10,
               "shelter": false,
               "people": 2
             },
                         {
               "name": 3,
-              "deadline": 1,
+              "deadline": 11,
               "shelter": true,
               "people": 0
             },
                         {
               "name": 4,
-              "deadline": 4,
+              "deadline": 10,
               "shelter": false,
               "people": 2
             }
@@ -31,7 +31,7 @@
     {
       "from": 1,
       "to": 2,
-      "weight": 1,
+      "weight": 2,
       "blocked": false
     },
     {
@@ -43,7 +43,7 @@
     {
       "from": 2,
       "to": 3,
-      "weight": 1,
+      "weight": 3,
       "blocked": false
     },
         {
@@ -55,9 +55,8 @@
     {
       "from": 2,
       "to": 4,
-      "weight": 5,
+      "weight": 8,
       "blocked": false
     }
-
   ]
 }
