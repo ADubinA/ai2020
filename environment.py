@@ -6,8 +6,8 @@ from ai import Pc
 from ai import Annihilator
 from ai import Greedy
 from ai import LimitedAStarAgent #as SelectedAgent
-from ai import LimitedAStarAgent as SelectedAgent
-from ai import PureHeuristicAStarAgent #as SelectedAgent
+from ai import AStarAgent as SelectedAgent
+# from ai import PureHeuristicAStarAgent as SelectedAgent
 
 
 class Environment:
@@ -26,7 +26,7 @@ class Environment:
             self.add_edge(edge["from"], edge["to"], **edge)
 
         self.attributes = []
-        self.agents = [SelectedAgent("Curr_Agent", 1)]
+        self.agents = [SelectedAgent("Curr_Agent", 0)]
 
         # update the world for every agent at startup
         for agent in self.agents:
@@ -42,7 +42,7 @@ class Environment:
         :return: None
         """
         vertex_name = kwargs.get("name")
-        if not vertex_name:
+        if vertex_name is None:
             vertex_name = self.graph.number_of_nodes() + 1
             kwargs["name"] = vertex_name
 
@@ -182,7 +182,8 @@ class Environment:
         edge_labels = dict([((u, v,), d['weight']) for u, v, d in self.graph.edges(data=True)])
         nx.draw_networkx_edge_labels(self.graph, pos,
                                      edge_labels=edge_labels,
-                                     node_size=100)
+                                     node_size=100,
+                                     label_pos=0.3)
 
         self._print_node_data(pos, "people", 1)
         self._print_node_data(pos, "shelter", 2)

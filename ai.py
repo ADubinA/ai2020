@@ -7,9 +7,9 @@ from networkx.algorithms.shortest_paths.generic import shortest_path as shortest
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
 
 K = 2
-L = 2
+L = 10
 expansion_limit = 100000
-Time_Per_Expansion = 0.0
+Time_Per_Expansion = 0
 STATE_LIST = ["no_op", "terminated", "traversing",
               "user_input",
               "find_people", "find_shelter",
@@ -736,3 +736,6 @@ class PureHeuristicAStarAgent(AStarAgent):
     def calc_f(self):
         score = self.heuristic()
         return score
+
+
+
