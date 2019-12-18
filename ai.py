@@ -599,9 +599,15 @@ class AStarAgent(Greedy):
                     self.change_state("terminated")
 
     def _actions_for_arriving_at_node(self):
+        """
+        Assuming that self.location is now updated
+        will preform all actions and checks that are needed when landing on a new node.
+        :return:
+        """
         if self.local_environment.get_attr(self.location, "people") > 0:
             self.carry_num += self.local_environment.get_attr(self.location, "people")
             self.local_environment.change_attr(self.location, "people", 0)
+            self.nodes_containing_people = list(set(self.nodes_containing_people).remove(self.location))
 
         if self.local_environment.get_attr(self.location, "shelter") > 0:
             self.people_saved += self.carry_num
