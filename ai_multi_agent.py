@@ -1,13 +1,13 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 5
+MAX_LEVEL = 2
 
 class AdversarialAgent(AStarAgent):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
         self.states = {"minmax": self._act_minmax}
-        self.active_state = "terminated"
+        self.active_state = "minmax"
         self.alpha = -float("infinity")
         self.beta = float("infinity")
         self.score = None
@@ -32,6 +32,8 @@ class AdversarialAgent(AStarAgent):
 
 
     def _simulate(self):
+        if self.level % len(self.local_environment.agents) == 0 and self.level != 0:
+            self.local_environment.time += 1
         self.curr_time += 1
         if self.active_state == "traversing":
             self._simulate_traversing()
@@ -80,7 +82,7 @@ class AdversarialAgent(AStarAgent):
 
         options = []
         # if traversing, keep traversing or if terminated, keep terminated
-        if self.location != self.destination or self.active_state=="terminated":
+        if self.location != self.destination or self.active_state == "terminated":
             options.append(copy.deepcopy(self))
 
         else:
@@ -91,10 +93,13 @@ class AdversarialAgent(AStarAgent):
                 if ((self.curr_time + option_data["weight"]) >
                         self.local_environment.get_node_deadline(option_node)):
                     continue
-
                 # update a new agent
                 options.append(copy.deepcopy(self))
                 options[-1].destination = option_node
+
+            # adding the terminate option
+            options.append(copy.deepcopy(self))
+            options[-1].active_state = "terminated"
 
         # update the environment for the other agent
         results = []
@@ -102,6 +107,9 @@ class AdversarialAgent(AStarAgent):
             option._simulate()
             other_agent_copy = copy.deepcopy(other_agent)
             other_agent_copy.set_environment(option.local_environment)
+
+            # update the agent in that environment
+            other_agent_copy.local_environment.update_agents([other_agent_copy, option])
             results.append(other_agent_copy)
 
         return results
@@ -120,17 +128,18 @@ class AdversarialAgent(AStarAgent):
 
     def _act_minmax(self, global_env):
         self._minmax()
-
+        self.print_decision()
         #calculate the path after minmax calculation (by which child has the same score)
 
     def _minmax(self):
+        print("currercnts levels iares: {}".format(self.level))
         """
         expand a minmax node, where the node is an agent.
         with prune with current alpha beta values
         :return: the score from the current result of the minmax tree
         """
         # if agent node is a cut off, use heuristics of both agents.
-        if self.level > MAX_LEVEL:
+        if self.level > MAX_LEVEL or self.local_environment.is_terminated():
             self._calculate_leaf_node_score()
             return
 
@@ -146,8 +155,10 @@ class AdversarialAgent(AStarAgent):
         # alpha beta prune
         self.ab_prune()
 
+
+
         for option in self.current_options:
-            option._act_minmax()
+            option._minmax()
 
         # get score (depends on type of class)  is all the children
         score_list = [agent.score for agent in self.current_options]
@@ -164,7 +175,9 @@ class AdversarialAgent(AStarAgent):
 
         # TODO do the same for the next agent?
         other_agent = [agent for agent in self.local_environment.agents if agent.name != self.name][0]
-        self.others_score = other_agent.heuristics()
+        self.others_score = other_agent.heuristic()
+
+        self.score = self.score - self.others_score
         self.is_cutoff = True
 
 
@@ -193,6 +206,11 @@ class AdversarialAgent(AStarAgent):
         # this will print radially the nodes
         G = covert_local_to_global_tree(self)
         pos = hierarchy_pos(G, 0, width=2 * math.pi, xcenter=0)
-        new_pos = {u: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items()}
-        nx.draw(G, pos=new_pos, node_size=50,with_labels="score")
-        nx.draw_networkx_nodes(G, pos=new_pos, nodelist=[0], node_color='blue', node_size=200)
+        # new_pos = {u: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items()}
+
+        node_labels = nx.get_node_attributes(G, 'score')
+
+        nx.draw(G, pos=pos, node_size=50, labels = node_labels)
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=[0], node_color='blue', node_size=200)
+        # nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
+

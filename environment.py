@@ -106,6 +106,17 @@ class Environment:
             agent.curr_time += 1
         self._update_environment()
 
+    def update_agents(self, new_agents):
+        """
+        use for recursion in the multi agent part.
+        :param agents:
+        :return:
+        """
+        for new_agent in new_agents:
+            for i in range(len(self.agents)):
+                if self.agents[i].name == new_agent.name:
+                    self.agents[i] = new_agent
+                    break
 
     def get_node_deadline(self, node, after_time=0):
         """
@@ -237,8 +248,6 @@ class Environment:
         :return:
         """
         return self.graph[node_key]
-
-
 
     def save(self, save_dir):
         """

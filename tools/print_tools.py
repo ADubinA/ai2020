@@ -87,7 +87,7 @@ def covert_local_to_global_tree(root):
         # for every agent check if it's not a leaf add children to heap
         for child in parent.current_options:
             if not child.is_cutoff:
-                heap.append(node_index, child)
+                heap.append((node_index, child))
 
             # add the kid to the tree
             G.add_node(node_index, score=child.score, agent=child.name, alpha=child.alpha, beta=child.beta)
