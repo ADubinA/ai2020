@@ -17,7 +17,7 @@ class AdversarialAgent(AStarAgent):
         self.level = 0  # where in the tree the agent is been developed
         self.is_cutoff = False  # is used for graph visualization
 
-    def _simulate(self, state):
+    def _simulate(self):
         """
         Given a state, the agent will simulate one tick in it's environment
         will update it's own active state if needed
@@ -58,15 +58,36 @@ class AdversarialAgent(AStarAgent):
         :param other_agent: the other agent for duplication. will be a deep copy
         :return: Returns a list of updated Environments with the updated action
         """
-        """       
-         if self.active_state == "traversing":
-            neighbors = {self.destination: self.local_environment.nodes}# TODO first to the right format
+
+        options = []
+        # if traversing, keep traversing or if terminated, keep terminated
+        if self.location != self.destination or self.active_state=="terminated":
+            options.append(copy.deepcopy(self))
+
         else:
-            neighbors = self.local_environment.get_passable_subgraph(self.curr_time,
+            # loop on possible nodes
+            options_graph = self.local_environment.get_passable_subgraph(self.curr_time,
                                                                      keep_nodes=[self.location])[self.location]
-        # TODO add the terminate action to the possibilities
-        # TODO think how to write this + update the score here (similar to the cutoff)
-        """
+            for option_node, option_data in options_graph.items():
+                if ((self.curr_time + option_data["weight"]) >
+                        self.local_environment.get_node_deadline(option_node)):
+                    continue
+
+                # update a new agent
+                options.append(copy.deepcopy(self))
+                options[-1].destination = option_node
+
+        # update the environment for the other agent
+        results = []
+        for option in options:
+            option._simulate()
+            other_agent_copy = copy.deepcopy(other_agent)
+            other_agent_copy.set_environment(option.local_environment)
+            results.append(other_agent_copy)
+
+        return results
+
+
         # will call simulate here
 
 
@@ -75,6 +96,7 @@ class AdversarialAgent(AStarAgent):
         will prune the current_options variable using alpha beta pruning.
         :return:
         """
+        # TODO this
         pass
 
     def _act_minmax(self, global_env):
