@@ -6,7 +6,7 @@ from ai import Pc
 from ai import Annihilator
 from ai import Greedy
 from ai import LimitedAStarAgent #as SelectedAgent
-from ai_adverserial import AdversarialAgent as SelectedAgent
+from ai_multi_agent import AdversarialAgent as SelectedAgent
 # from ai import PureHeuristicAStarAgent as SelectedAgent
 
 
@@ -26,8 +26,8 @@ class Environment:
             self.add_edge(edge["from"], edge["to"], **edge)
 
         self.attributes = []
-        self.agents = [SelectedAgent("A1", 0),
-                       SelectedAgent("A2", 4)]
+        self.agents = [SelectedAgent("A1", 1),
+                       SelectedAgent("A2", 2)]
 
         self.agents[0].decision_type = "max"
         self.agents[1].decision_type = "min"

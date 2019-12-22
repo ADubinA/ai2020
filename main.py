@@ -17,4 +17,4 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
 
 if __name__ == "__main__":
-    main("test/theoretical_graph.json", 0.05)
+    main("test/smol.json", 0.05)
