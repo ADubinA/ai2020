@@ -17,9 +17,28 @@ class AdversarialAgent(AStarAgent):
         self.level = 0  # where in the tree the agent is been developed
         self.is_cutoff = False  # is used for graph visualization
 
+    #literally does nothing. If you're dead, you remain dead.
+    def _simulate_terminated(self):
+        pass
+
+    def _simulate_traversing(self):
+        self.time_remaining_to_dest -= 1
+        if self.time_remaining_to_dest <= 0:
+            self._simulate_arrival()
+
+    def _simulate_arrival(self):
+        self._actions_for_arriving_at_node()
+        self.location = self.destination
+
+
     def _simulate(self):
+        self.curr_time += 1
+        if self.active_state == "traversing":
+            self._simulate_traversing()
+        if self.active_state == "terminated":
+            self._simulate_terminated()
         """
-        Given a state, the agent will simulate one tick in it's environment
+        Given an internal state, the agent will simulate one tick in it's environment
         will update it's own active state if needed
         :param state:
         :return: None
