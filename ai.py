@@ -151,6 +151,8 @@ class Agent:
     def act(self, global_env):
         print("agent {} is in state {} and acting at time {}".format(self.name,
                                                                      self.active_state, self.local_environment.time))
+        print("agent {} is carrying {} and acting at time {}".format(self.name,
+                                                                     self.carry_num, self.local_environment.time))
         # print("heuristics = " + str(self.heuristic()))
         self.states[self.active_state](global_env)
 
@@ -588,6 +590,7 @@ class AStarAgent(Greedy):
 
             self.location = self.destination
             self._actions_for_arriving_at_node()
+            # self.global_actions_for_arriving_at_node(global_env)
 
             # if remaining path (including current node) is smaller then one, it has finished traversing
             if len(self.path[self.destination_index:]) <= 1:
@@ -613,6 +616,21 @@ class AStarAgent(Greedy):
             self.nodes_containing_people.remove(self.location)
 
         if self.local_environment.get_attr(self.location, "shelter") > 0:
+            self.people_saved += self.carry_num
+            self.carry_num = 0
+
+    def global_actions_for_arriving_at_node(self, global_env):
+        """
+        Assuming that self.location is now updated
+        will preform all actions and checks that are needed when landing on a new node.
+        :return:
+        """
+        if global_env.get_attr(self.location, "people") > 0:
+            self.carry_num += self.local_environment.get_attr(self.location, "people")
+            global_env.change_attr(self.location, "people", 0)
+            self.nodes_containing_people.remove(self.location)
+
+        if global_env.get_attr(self.location, "shelter") > 0:
             self.people_saved += self.carry_num
             self.carry_num = 0
 

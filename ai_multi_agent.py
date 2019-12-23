@@ -1,7 +1,7 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 8
+MAX_LEVEL = 3
 from tools.tools import *
 
 class AdversarialAgent(LimitedAStarAgent):
@@ -93,6 +93,7 @@ class AdversarialAgent(LimitedAStarAgent):
             other_agent_copy = copy.deepcopy(self.other_agent)
             other_agent_copy.set_environment(option.local_environment)
             other_agent_copy.set_other_agent(option)
+
             if other_agent_copy.active_state == "minmax":
                 other_agent_copy.active_state = "traversing"
 
@@ -113,10 +114,16 @@ class AdversarialAgent(LimitedAStarAgent):
         pass
 
     def _act_minmax(self, global_env):
+        self.other_agent.current_options = []
+        self.current_options = []
+
         optimal_option = self._minmax()
         self._extract_optimal_move(optimal_option, global_env)
+
         self.print_decision()
-        clear_data(self)
+
+        self.other_agent.current_options = []
+        self.current_options = []
         self.act(global_env)
 
     def _minmax(self):
@@ -164,8 +171,8 @@ class AdversarialAgent(LimitedAStarAgent):
 
         # traversing option
         elif optimal_option.other_agent.active_state == "traversing":
-            if self.location != optimal_option.destination:
-                self.traverse_to_node(optimal_option.destination, global_env)
+            if self.location != optimal_option.other_agent.destination:
+                self.traverse_to_node(optimal_option.other_agent.destination, global_env)
                 self.path = [self.location, self.destination]
                 self.destination_index = 1
             else:
@@ -194,7 +201,7 @@ class AdversarialAgent(LimitedAStarAgent):
         if self.decision_type == "max":
             return max(option_list, key=lambda x: x.score - x.other_agent.score)
         elif self.decision_type == "min":
-            return min(option_list, key=lambda x: x.score - x.other_agent.score)
+            return min(option_list, key=lambda x: -x.score + x.other_agent.score)
         else:
             raise ValueError("unknown decision type")
 

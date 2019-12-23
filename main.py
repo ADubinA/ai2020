@@ -45,7 +45,7 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
     env = Environment(save_dir)
 
     agents = [SelectedAgent("A1", 1),
-              SelectedAgent("A2", 2)]
+              SelectedAgent("A2", 3)]
     agents[0].decision_type = "min"
     agents[1].decision_type = "max"
 
@@ -63,8 +63,12 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
         for agent in agents:
             agent.act(env)
-
+            agents[0].set_environment(env)
+            agents[1].set_environment(env)
+            # agents[0].set_other_agent(agents[1])
+            # agents[1].set_other_agent(agents[0])
         # update the world for every agent
+
         env.tick()
         for agent in agents:
             agent.set_environment(env)
@@ -75,4 +79,4 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
 
 if __name__ == "__main__":
-    main("test/smol.json", 0.05)
+    main("test/adv/adverserial_graph.json",1)
