@@ -1,13 +1,13 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 1
+MAX_LEVEL = 2
 from tools.tools import *
 
 class AdversarialAgent(AStarAgent):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
-        self.states = {"minmax": self._act_minmax}
+        self.states["minmax"] = self._act_minmax
         self.active_state = "minmax"
         self.alpha = -float("infinity")
         self.beta = float("infinity")
@@ -49,8 +49,6 @@ class AdversarialAgent(AStarAgent):
 
         if self.level % 2 == 0 and self.level != 0:
             self.local_environment.time += 1
-
-
 
     def _calculate_options(self):
         """
@@ -114,10 +112,10 @@ class AdversarialAgent(AStarAgent):
         pass
 
     def _act_minmax(self, global_env):
-        self._minmax()
+        optimal_option = self._minmax()
+        self._extract_optimal_move(optimal_option, global_env)
         self.print_decision()
-
-        #calculate the path after minmax calculation (by which child has the same score)
+        self.act(global_env)
 
     def _minmax(self):
         """
@@ -141,10 +139,25 @@ class AdversarialAgent(AStarAgent):
             option._minmax()
 
         # get score (depends on type of class)  is all the children
-        self.score = self._get_score(self.current_options)
-        # TODO set other_score value here as well
+        optimal_option = self._choose_optimal(self.current_options)
+        self.score = optimal_option.score
+        self.other_agent.score = optimal_option.other_agent.score
 
-        # change to action traverse to the optimal move
+        # extract the optimal movement for self
+        return optimal_option
+
+    def _extract_optimal_move(self, optimal_option, global_env):
+
+        # terminate option
+        if optimal_option.other_agent.active_state == "terminated":
+            self.change_state("terminated")
+
+        # traversing option
+        elif optimal_option.other_agent.active_state == "traversing":
+            if self.location != optimal_option.destination:
+                self.traverse_to_node(optimal_option.destination, global_env)
+            else:
+                self.change_state("terminated")
 
     def _calculate_leaf_node_score(self):
         """
@@ -156,18 +169,17 @@ class AdversarialAgent(AStarAgent):
         self.is_cutoff = True
 
 
-    def _get_score(self, option_list):
+    def _choose_optimal(self, option_list):
         """
         will calculate the score given a list of possible scores
         :param option_list: list of agents, as option for choosing
         :return: the proper score, depends on the type of agent and the self.decision_type
         """
         # TODO maybe the score in the other agent is the opposite here
-        score_list = [option.score - option.other_agent.score for option in option_list]
         if self.decision_type == "max":
-            return max(score_list)
+            return max(option_list, key=lambda x: x.score-x.other_agent.score)
         elif self.decision_type == "min":
-            return min(score_list)
+            return min(option_list, key=lambda x: x.score-x.other_agent.score)
         else:
             raise ValueError("unknown decision type")
 
@@ -199,5 +211,11 @@ class AdversarialAgent(AStarAgent):
         terminated_list = [node for node in G.nodes if G.nodes[node]["active_state"] == "terminated"]
         nx.draw_networkx_nodes(G, pos=pos, nodelist=terminated_list, node_color='red', node_size=100,  labels=node_labels)
         # nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
+
+        label_printer(G, pos, "location", 1)
+        label_printer(G, pos, "other_score", -1)
+
+        # label_printer(G, pos, "location", 2)
+
         plt.show()
 

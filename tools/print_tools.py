@@ -77,8 +77,9 @@ def covert_local_to_global_tree(root):
     # start the heap and set the graph with a root of root
     heap = [(0, root)]
     G = nx.Graph()
-    G.add_node(0, score=root.score, name=root.name, alpha=root.alpha, beta=root.beta, location=root.location,
-               level=root.level,active_state=root.active_state)
+    G.add_node(0, score=root.score, other_score=root.other_agent.score,
+               name=root.name, alpha=root.alpha, beta=root.beta, location=root.location,
+               level=root.level, active_state=root.active_state)
 
     # loop until the heap is empty
     node_index = 1
@@ -91,12 +92,23 @@ def covert_local_to_global_tree(root):
                 heap.append((node_index, child))
 
             # add the kid to the tree
-            G.add_node(node_index, score=child.score, name=child.name, alpha=child.alpha, beta=child.beta,
-                       location=child.location, level=child.level,active_state=child.active_state)
+            G.add_node(node_index, score=child.score, other_score=child.other_agent.score,
+                       name=child.name, alpha=child.alpha, beta=child.beta,
+                       location=child.location, level=child.level, active_state=child.active_state)
             G.add_edge(parent_index, node_index)
             node_index += 1
 
     return G
 
 
+def label_printer(G, pos, dict_key, spacing=1):
+    pos_attrs = {}
+    for node, coords in pos.items():
+        pos_attrs[node] = (coords[0], coords[1] + spacing * 0.03)
 
+    node_labels = nx.get_node_attributes(G, dict_key)
+    custom_node_attrs = {}
+    for node, attr in node_labels.items():
+        custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
+
+    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=8)

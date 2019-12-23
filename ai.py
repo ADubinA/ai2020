@@ -70,8 +70,10 @@ class Agent:
 
         else:
             self.active_state = state
+
     def curr_time(self):
         return self.local_environment.time
+
     def print_state(self, delim=True):
         print("Agent name: {}".format(self.name))
         print("Agent state: {}".format(self.active_state))
