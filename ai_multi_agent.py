@@ -101,15 +101,25 @@ class AdversarialAgent(AStarAgent):
 
 
         # will call simulate here
+    # def _calculate_leaf_node_score(self):
+    #     """
+    #     update the score and others_score values using the heuristics
+    #     :return:
+    #     """
+    #     self.score = self.calc_f()
+    #     self.other_agent.score = self.other_agent.calc_f()
+    #     self.is_cutoff = True
 
-
-    def ab_prune(self):
-        """
-        will prune the current_options variable using alpha beta pruning.
-        :return:
-        """
-        # TODO this
-        pass
+    def ab_prune(self, optimal_option):
+        prune = False
+        if (self.decision_type == "max"):
+            if (self.beta <= self.alpha):
+                prune = True
+        else:
+            if (self.decision_type == "min"):
+                if (self.beta <= self.alpha):
+                    prune = True
+        return prune
 
     def _act_minmax(self, global_env):
         optimal_option = self._minmax()
@@ -132,7 +142,6 @@ class AdversarialAgent(AStarAgent):
         # calculate all possible actions. If traversing, will keep traversing
         self.current_options = self._calculate_options()
         # alpha beta prune
-        self.ab_prune()
 
         # check every non pruned options
         for option in self.current_options:
@@ -142,6 +151,12 @@ class AdversarialAgent(AStarAgent):
         optimal_option = self._choose_optimal(self.current_options)
         self.score = optimal_option.score
         self.other_agent.score = optimal_option.other_agent.score
+        if (self.decision_type == "max"):
+            self.alpha = self.score
+            self.beta = self.other_agent.score
+        else:
+            self.alpha = self.other_agent.score
+            self.beta = self.score
 
         # extract the optimal movement for self
         return optimal_option
@@ -164,8 +179,15 @@ class AdversarialAgent(AStarAgent):
         update the score and others_score values using the heuristics
         :return:
         """
-        self.score = self.heuristic()
-        self.other_agent.score = self.other_agent.heuristic()
+        self.score = self.calc_f()
+        self.other_agent.score = self.other_agent.calc_f()
+        if self.decision_type == "max":
+            self.alpha = self.score
+            self.beta = self.other_agent.score
+            #TODO Might not be true.
+        else:
+            self.alpha = self.other_agent.score
+            self.beta = self.score
         self.is_cutoff = True
 
 
