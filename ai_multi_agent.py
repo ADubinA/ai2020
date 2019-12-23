@@ -1,7 +1,8 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 2
+MAX_LEVEL = 1
+from tools.tools import *
 
 class AdversarialAgent(AStarAgent):
     def __init__(self, name, starting_node):
@@ -11,11 +12,14 @@ class AdversarialAgent(AStarAgent):
         self.alpha = -float("infinity")
         self.beta = float("infinity")
         self.score = None
-        self.others_score = None  # score for the other agent in the tree. the score is for the same tick.
+        self.other_agent = None
         self.decision_type = "max"
         self.current_options = []  # a list of agents, where each agent is the rival.
-        self.level = 0  # where in the tree the agent is been developed
+        self.level = -1  # where in the tree the agent is been developed
         self.is_cutoff = False  # is used for graph visualization
+
+    def set_other_agent(self, other_agent):
+        self.other_agent = other_agent
 
     #literally does nothing. If you're dead, you remain dead.
     def _simulate_terminated(self):
@@ -27,56 +31,30 @@ class AdversarialAgent(AStarAgent):
             self._simulate_arrival()
 
     def _simulate_arrival(self):
-        self._actions_for_arriving_at_node()
         self.location = self.destination
+        self._actions_for_arriving_at_node()
 
 
     def _simulate(self):
-        if self.level % len(self.local_environment.agents) == 0 and self.level != 0:
-            self.local_environment.time += 1
-        self.curr_time += 1
+        """
+        Given an internal state, the agent will simulate one tick in it's environment
+        will update it's own active state if needed
+        :return: None
+        """
+        # self.curr_time += 1
         if self.active_state == "traversing":
             self._simulate_traversing()
         if self.active_state == "terminated":
             self._simulate_terminated()
-        """
-        Given an internal state, the agent will simulate one tick in it's environment
-        will update it's own active state if needed
-        :param state:
-        :return: None
-        """
-        """       
-         for neighbor_node, neighbor_data in neighbors.items():
 
-            # checks again for some reason that self can go to the node # TODO is that necessary (is from expand node)
-            if ((self.curr_time + neighbor_data["weight"]) >
-                    self.local_environment.get_node_deadline(neighbor_node)):
-                continue
+        if self.level % 2 == 0 and self.level != 0:
+            self.local_environment.time += 1
 
-            # create a copy of the other agent and it's environment
-            new_other_agent = copy.deepcopy(other_agent)
 
-            # update the effect of self after taken action
-            self_after_action = copy.deepcopy(self)
-            self_after_action.curr_time += 1
-            self_after_action.path.append(neighbor_node)
 
-            # TODO finish updating the self_agent after action, USING action (_act_traversing ect...)
-            # check if action will lead to a new node
-            # if it does, use _actions_for_arriving_at_node
-
-            # TODO update the environment (of self_after_action, after the action was taken
-
-            # updated the new_other_agent env with the updates that self_after_action did.
-            new_other_agent.set_environment(self_after_action.local_environment)
-            self.current_options.append(new_other_agent)"""
-        # will update the time self.level%num_agents==0 and level!=0
-        pass
-
-    def _calculate_options(self, other_agent):
+    def _calculate_options(self):
         """
         will return a list of all the possible options for agent to do
-        :param other_agent: the other agent for duplication. will be a deep copy
         :return: Returns a list of updated Environments with the updated action
         """
 
@@ -85,17 +63,24 @@ class AdversarialAgent(AStarAgent):
         if self.location != self.destination or self.active_state == "terminated":
             options.append(copy.deepcopy(self))
 
+            if options[-1].active_state == "minmax":
+                options[-1].active_state = "traversing"
         else:
             # loop on possible nodes
-            options_graph = self.local_environment.get_passable_subgraph(self.curr_time,
+            options_graph = self.local_environment.get_passable_subgraph(self.curr_time(),
                                                                      keep_nodes=[self.location])[self.location]
             for option_node, option_data in options_graph.items():
-                if ((self.curr_time + option_data["weight"]) >
+                if ((self.curr_time() + option_data["weight"]) >
                         self.local_environment.get_node_deadline(option_node)):
                     continue
+
                 # update a new agent
                 options.append(copy.deepcopy(self))
                 options[-1].destination = option_node
+                options[-1].time_remaining_to_dest = option_data["weight"]
+
+                if options[-1].active_state == "minmax":
+                    options[-1].active_state = "traversing"
 
             # adding the terminate option
             options.append(copy.deepcopy(self))
@@ -105,11 +90,13 @@ class AdversarialAgent(AStarAgent):
         results = []
         for option in options:
             option._simulate()
-            other_agent_copy = copy.deepcopy(other_agent)
+            other_agent_copy = copy.deepcopy(self.other_agent)
             other_agent_copy.set_environment(option.local_environment)
+            other_agent_copy.set_other_agent(option)
+            if other_agent_copy.active_state == "minmax":
+                other_agent_copy.active_state = "traversing"
 
             # update the agent in that environment
-            other_agent_copy.local_environment.update_agents([other_agent_copy, option])
             results.append(other_agent_copy)
 
         return results
@@ -129,40 +116,33 @@ class AdversarialAgent(AStarAgent):
     def _act_minmax(self, global_env):
         self._minmax()
         self.print_decision()
+
         #calculate the path after minmax calculation (by which child has the same score)
 
     def _minmax(self):
-        print("currercnts levels iares: {}".format(self.level))
         """
         expand a minmax node, where the node is an agent.
         with prune with current alpha beta values
         :return: the score from the current result of the minmax tree
         """
         # if agent node is a cut off, use heuristics of both agents.
-        if self.level > MAX_LEVEL or self.local_environment.is_terminated():
+        if self.level == MAX_LEVEL or is_terminated([self, self.other_agent]):
             self._calculate_leaf_node_score()
             return
-
-        # update the level that we are working on
         self.level += 1
 
-        # get other agent (if more then one, will pick the first)
-        other_agent = [agent for agent in self.local_environment.agents if agent.name != self.name][0]
-
         # calculate all possible actions. If traversing, will keep traversing
-        self.current_options = self._calculate_options(other_agent)
-
+        self.current_options = self._calculate_options()
         # alpha beta prune
         self.ab_prune()
 
-
-
+        # check every non pruned options
         for option in self.current_options:
             option._minmax()
 
         # get score (depends on type of class)  is all the children
-        score_list = [agent.score for agent in self.current_options]
-        self.score = self._get_score(score_list)
+        self.score = self._get_score(self.current_options)
+        # TODO set other_score value here as well
 
         # change to action traverse to the optimal move
 
@@ -172,23 +152,18 @@ class AdversarialAgent(AStarAgent):
         :return:
         """
         self.score = self.heuristic()
-
-        # TODO do the same for the next agent?
-        other_agent = [agent for agent in self.local_environment.agents if agent.name != self.name][0]
-        self.others_score = other_agent.heuristic()
-
-        self.score = self.score - self.others_score
+        self.other_agent.score = self.other_agent.heuristic()
         self.is_cutoff = True
 
 
-    def _get_score(self, score_list):
+    def _get_score(self, option_list):
         """
         will calculate the score given a list of possible scores
-        :param score_list: list of values
+        :param option_list: list of agents, as option for choosing
         :return: the proper score, depends on the type of agent and the self.decision_type
         """
-        # TODO handle the empty list
-
+        # TODO maybe the score in the other agent is the opposite here
+        score_list = [option.score - option.other_agent.score for option in option_list]
         if self.decision_type == "max":
             return max(score_list)
         elif self.decision_type == "min":
@@ -210,7 +185,19 @@ class AdversarialAgent(AStarAgent):
 
         node_labels = nx.get_node_attributes(G, 'score')
 
-        nx.draw(G, pos=pos, node_size=50, labels = node_labels)
-        nx.draw_networkx_nodes(G, pos=pos, nodelist=[0], node_color='blue', node_size=200)
+        # print graph
+        nx.draw(G, pos=pos, node_size=50, labels=node_labels)
+
+        # print A1 nodes
+        a1_node_list = [node for node in G.nodes if G.nodes[node]["name"]=="A1"]
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=a1_node_list, node_color='blue', node_size=200,  labels=node_labels)
+        # print A2 nodes
+
+        a2_node_list = [node for node in G.nodes if G.nodes[node]["name"]=="A2"]
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=a2_node_list, node_color='green', node_size=200,  labels=node_labels)
+
+        terminated_list = [node for node in G.nodes if G.nodes[node]["active_state"] == "terminated"]
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=terminated_list, node_color='red', node_size=100,  labels=node_labels)
         # nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
+        plt.show()
 

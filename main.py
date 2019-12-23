@@ -1,19 +1,77 @@
 import time
 from environment import Environment
+from ai_multi_agent import AdversarialAgent as SelectedAgent
+import networkx as nx
+import matplotlib.pyplot as plt
+from tools.tools import *
+
+def display(env,agents, save_dir=None):
+    """                                                                                                                                                                                                                     z
+    display the graph current state.
+    :param save_dir: path to save the image. If None, will use plt.show()
+    :return: None
+    """
+
+    # create figure with title
+    fig, ax = plt.subplots()
+    plt.title("Graph at time: {}".format(env.time))
+
+    # even spaced shell layout
+    pos = nx.circular_layout(env.graph, scale=2)
+    pos = {node: node_pos*0.5 for node,node_pos in pos.items()}
+
+    for agent in agents:
+        agent.get_annotation_box(pos, ax)
+    # add the weight labels to the figure
+    edge_labels = dict([((u, v,), d['weight']) for u, v, d in env.graph.edges(data=True)])
+    nx.draw_networkx_edge_labels(env.graph, pos,
+                                 edge_labels=edge_labels,
+                                 node_size=100,
+                                 label_pos=0.3)
+
+    env.print_node_data(pos, "people", 1)
+    env.print_node_data(pos, "shelter", 2)
+    env.print_node_data(pos, "deadline", 3)
+
+    # draw the rest of the graph
+    ax.margins(0.4, 0.4)
+    nx.draw(env.graph, pos, with_labels=True, font_weight='bold')
+
+    if not save_dir:
+        plt.show()
 
 def main(save_dir, seconds_per_tick, max_tick=1000):
 
     env = Environment(save_dir)
+
+    agents = [SelectedAgent("A1", 1),
+              SelectedAgent("A2", 2)]
+    agents[0].decision_type = "max"
+    agents[1].decision_type = "min"
+
+    agents[0].set_other_agent(agents[1])
+    agents[1].set_other_agent(agents[0])
+    # update the world for every agent at startup
+    for agent in agents:
+        agent.set_environment(env)
+
     iteration = 0
     while iteration < max_tick:
-        env.display()
-        if env.is_terminated():
+        display(env, agents)
+        if is_terminated(agents):
             break
 
+        for agent in agents:
+            agent.act(env)
+
+        # update the world for every agent
         env.tick()
+        for agent in agents:
+            agent.set_environment(env)
+
         time.sleep(seconds_per_tick)
         iteration += 1
-    env.display()
+    display(env,agents)
 
 
 if __name__ == "__main__":

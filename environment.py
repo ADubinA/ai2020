@@ -2,12 +2,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import logging
 from tools.parser import Parser
-from ai import Pc
-from ai import Annihilator
-from ai import Greedy
-from ai import LimitedAStarAgent #as SelectedAgent
-from ai_multi_agent import AdversarialAgent as SelectedAgent
-# from ai import PureHeuristicAStarAgent as SelectedAgent
 
 
 class Environment:
@@ -26,15 +20,6 @@ class Environment:
             self.add_edge(edge["from"], edge["to"], **edge)
 
         self.attributes = []
-        self.agents = [SelectedAgent("A1", 1),
-                       SelectedAgent("A2", 2)]
-
-        self.agents[0].decision_type = "max"
-        self.agents[1].decision_type = "min"
-
-        # update the world for every agent at startup
-        for agent in self.agents:
-            agent.set_environment(self)
 
         # raise NotImplemented()
 
@@ -96,27 +81,7 @@ class Environment:
         :return: None
         """
         # each agent act on the world at his turn
-
-        for agent in self.agents:
-            agent.act(self)
-
-        # update the world for every agent
-        for agent in self.agents:
-            agent.set_environment(self)
-            agent.curr_time += 1
         self._update_environment()
-
-    def update_agents(self, new_agents):
-        """
-        use for recursion in the multi agent part.
-        :param agents:
-        :return:
-        """
-        for new_agent in new_agents:
-            for i in range(len(self.agents)):
-                if self.agents[i].name == new_agent.name:
-                    self.agents[i] = new_agent
-                    break
 
     def get_node_deadline(self, node, after_time=0):
         """
@@ -157,67 +122,12 @@ class Environment:
 
         return time
 
-    def display(self, save_dir=None):
-        """                                                                                                                                                                                                                     z
-        display the graph current state.
-        :param save_dir: path to save the image. If None, will use plt.show()
-        :return: None
-        """
-        # ---------------display parameters--------------------
-        color_dict = {
-
-            # players
-            'annihilator': 'red',
-            'greedy': 'blue',
-            'pc': 'yellow',
-
-            # edges
-            'passable': 'black',
-            'broken': 'red',
-
-            # nodes
-            'shelter': 'green',
-            'people': 'purple'
-
-        }
-
-
-        # -----------------------------------------------------
-
-        # create figure with title
-        fig, ax = plt.subplots()
-        plt.title("Graph at time: {}".format(self.time))
-
-        # even spaced shell layout
-        pos = nx.circular_layout(self.graph, scale=2)
-        pos = {node:node_pos*0.5 for node,node_pos in pos.items()}
-
-        self._print_agents_data(ax, pos)
-        # add the weight labels to the figure
-        edge_labels = dict([((u, v,), d['weight']) for u, v, d in self.graph.edges(data=True)])
-        nx.draw_networkx_edge_labels(self.graph, pos,
-                                     edge_labels=edge_labels,
-                                     node_size=100,
-                                     label_pos=0.3)
-
-        self._print_node_data(pos, "people", 1)
-        self._print_node_data(pos, "shelter", 2)
-        self._print_node_data(pos, "deadline", 3)
-
-        # draw the rest of the graph
-        ax.margins(0.4, 0.4)
-        nx.draw(self.graph, pos, with_labels=True, font_weight='bold')
-
-
-        if not save_dir:
-            plt.show()
-
         # raise NotImplemented()
 
     def _update_environment(self, time=1):
         self.time = self.time + time
 
-    def _print_node_data(self, pos, dict_key, spacing):
+    def print_node_data(self, pos, dict_key, spacing):
 
         # add spacing to text
         pos_attrs = {}
@@ -233,13 +143,6 @@ class Environment:
             custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
 
         nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
-
-    def _print_agents_data(self, ax, pos):
-
-        for agent in self.agents:
-            agent.get_annotation_box(pos, ax)
-            if (agent.__getattribute__("score") != None):
-                print("Current agent score is: {}".format(agent.score))
 
     def get_node_neighborhood(self, node_key):
         """
@@ -265,14 +168,3 @@ class Environment:
         """
 
         raise NotImplemented()
-
-    def is_terminated(self):
-        """
-        will check if all the agents are terminated ;)
-        :return: (bool) true if terminated
-        """
-        terminated = True
-        for agent in self.agents:
-            if agent.active_state != "terminated":
-                terminated = False
-        return terminated

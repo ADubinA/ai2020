@@ -5,6 +5,7 @@ import math
 from matplotlib.offsetbox import AnnotationBbox, OffsetImage
 from networkx.algorithms.shortest_paths.generic import shortest_path as shortest_path_algorithm
 from networkx.algorithms.shortest_paths.weighted import single_source_dijkstra
+from environment import Environment
 
 K = 2
 L = 10
@@ -37,13 +38,12 @@ class Agent:
         self.location = starting_node  # this is a key to a node in local_environment
         self.carry_num = 0  # number of people currently been carried
         self.people_saved = 0
-        self.curr_time = 0
         self.time_to_wait = 0
         self.nodes_containing_people = []
+        self.local_environment = None
         # ------------------------------------
 
         self.score = 0
-        self.local_environment = None
         self.icon = None
         self.time_remaining_to_dest = 0
         self.destination = self.location  # key to the node been traversed
@@ -70,14 +70,15 @@ class Agent:
 
         else:
             self.active_state = state
-
+    def curr_time(self):
+        return self.local_environment.time
     def print_state(self, delim=True):
         print("Agent name: {}".format(self.name))
         print("Agent state: {}".format(self.active_state))
         print("Agent location: {}".format(self.location))
         print("Agent number of people carrying: {}".format(self.carry_num))
         print("Agent number of people saved: {}".format(self.people_saved))
-        print("Agent current time: {}".format(self.curr_time))
+        print("Agent current time: {}".format(self.curr_time()))
         print("Agent nodes containing people: {}".format(self.nodes_containing_people))
         if delim:
             print("-----------------------------------")
@@ -95,7 +96,7 @@ class Agent:
         if self.active_state != "terminated":
             for people_node in self.nodes_containing_people:
                 heuristic_value += self.local_environment.get_attr(people_node, "people")
-            people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people", time = self.curr_time)
+            people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people", time = self.curr_time())
             for people_node, people_path in people_paths.items():
                 if people_path is None:
                     continue
@@ -109,7 +110,7 @@ class Agent:
 
                     shelter_paths = self.filter_savable(people_node, nodes_containing_shelter, "shelter",
                                                         time=self.local_environment.calculate_path_time(people_path) +
-                                                             self.curr_time)
+                                                             self.curr_time())
                     # filter that ones without a path
                     shelter_paths = [shelter_path for _, shelter_path in shelter_paths.items() if
                                      shelter_path is not None]
@@ -140,10 +141,9 @@ class Agent:
         return savable_path
 
     def set_environment(self, global_env):
-        self.local_environment = global_env
+        self.local_environment = copy.deepcopy(global_env)
         self.nodes_containing_people = [node for node in global_env.graph.nodes if
                                         global_env.get_attr(node, "people") > 0]
-        self.curr_time = global_env.time
 
     def act(self, global_env):
         print("agent {} is in state {} and acting at time {}".format(self.name,
@@ -607,7 +607,7 @@ class AStarAgent(Greedy):
         if self.local_environment.get_attr(self.location, "people") > 0:
             self.carry_num += self.local_environment.get_attr(self.location, "people")
             self.local_environment.change_attr(self.location, "people", 0)
-            self.nodes_containing_people = list(set(self.nodes_containing_people).remove(self.location))
+            self.nodes_containing_people.remove(self.location)
 
         if self.local_environment.get_attr(self.location, "shelter") > 0:
             self.people_saved += self.carry_num
@@ -654,15 +654,15 @@ class AStarAgent(Greedy):
         agent = curr_node[1]
         current_route = curr_node[2]
         # create new agents for every neighbors
-        neighbors = agent.local_environment.get_passable_subgraph(agent.curr_time,
+        neighbors = agent.local_environment.get_passable_subgraph(agent.curr_time(),
                                                                   keep_nodes=[agent.location])[agent.location]
         for neighbor_node, neighbor_data in neighbors.items():
-            if ((agent.curr_time + neighbor_data["weight"]) >
+            if ((agent.curr_time() + neighbor_data["weight"]) >
                     agent.local_environment.get_node_deadline(neighbor_node)):
                 continue
             new_agent = copy.deepcopy(agent)
             new_agent.location = neighbor_node
-            new_agent.curr_time += neighbor_data["weight"]
+            new_agent.local_environment.time += neighbor_data["weight"]
 
             # if node has people in it
             if new_agent.location in set(new_agent.nodes_containing_people):
@@ -681,7 +681,7 @@ class AStarAgent(Greedy):
             new_route.append(neighbor_node)
             heapq.heappush(min_heap, (new_agent.calc_f(), new_agent, new_route))
             print("Agent is terminated: {}".format(new_agent.active_state == "terminated"))
-            print("Agent time is:{}".format(new_agent.curr_time))
+            print("Agent time is:{}".format(new_agent.curr_time()))
             print("Agent score: {}".format(new_agent.calc_f()))
             print("Agent path: {}".format(new_route))
 
@@ -707,7 +707,7 @@ class LimitedAStarAgent(AStarAgent):
 
         # first is f, second is agent, third is current path
         copy_agent = copy.deepcopy(self)
-        copy_agent.curr_time += self.expansion_limit*Time_Per_Expansion
+        copy_agent.local_environment.time += self.expansion_limit*Time_Per_Expansion
 
         heapq.heappush(state_score_heap, (self.calc_f(), copy_agent, [self.location]))
         return self._astar_main_loop(state_score_heap)
