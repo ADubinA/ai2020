@@ -15,7 +15,8 @@ STATE_LIST = ["no_op", "terminated", "traversing",
               "user_input",
               "find_people", "find_shelter",
               "annihilate", "wait",
-              "heuristic_calculation", "finished_traversing"]
+              "heuristic_calculation", "finished_traversing",
+              "minmax"]
 
 
 class Agent:

@@ -1,10 +1,10 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 2
+MAX_LEVEL = 8
 from tools.tools import *
 
-class AdversarialAgent(AStarAgent):
+class AdversarialAgent(LimitedAStarAgent):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
         self.states["minmax"] = self._act_minmax
@@ -13,10 +13,13 @@ class AdversarialAgent(AStarAgent):
         self.beta = float("infinity")
         self.score = None
         self.other_agent = None
+        self.total_ad_score = None
         self.decision_type = "max"
         self.current_options = []  # a list of agents, where each agent is the rival.
         self.level = -1  # where in the tree the agent is been developed
         self.is_cutoff = False  # is used for graph visualization
+    def _act_finished_traversing(self, global_env):
+        self.change_state("minmax")
 
     def set_other_agent(self, other_agent):
         self.other_agent = other_agent
@@ -33,7 +36,6 @@ class AdversarialAgent(AStarAgent):
     def _simulate_arrival(self):
         self.location = self.destination
         self._actions_for_arriving_at_node()
-
 
     def _simulate(self):
         """
@@ -102,7 +104,6 @@ class AdversarialAgent(AStarAgent):
 
         # will call simulate here
 
-
     def ab_prune(self):
         """
         will prune the current_options variable using alpha beta pruning.
@@ -115,6 +116,7 @@ class AdversarialAgent(AStarAgent):
         optimal_option = self._minmax()
         self._extract_optimal_move(optimal_option, global_env)
         self.print_decision()
+        clear_data(self)
         self.act(global_env)
 
     def _minmax(self):
@@ -140,8 +142,14 @@ class AdversarialAgent(AStarAgent):
 
         # get score (depends on type of class)  is all the children
         optimal_option = self._choose_optimal(self.current_options)
-        self.score = optimal_option.score
-        self.other_agent.score = optimal_option.other_agent.score
+        self.score = optimal_option.other_agent.score
+        self.other_agent.score = optimal_option.score
+        if self.decision_type == "min":
+            self.total_ad_score = self.score - self.other_agent.score
+        else:
+            self.total_ad_score = self.other_agent.score - self.score
+
+
 
         # extract the optimal movement for self
         return optimal_option
@@ -150,22 +158,29 @@ class AdversarialAgent(AStarAgent):
 
         # terminate option
         if optimal_option.other_agent.active_state == "terminated":
+            self.path = []
+            super()._act_finished_traversing(global_env)
             self.change_state("terminated")
 
         # traversing option
         elif optimal_option.other_agent.active_state == "traversing":
             if self.location != optimal_option.destination:
                 self.traverse_to_node(optimal_option.destination, global_env)
+                self.path = [self.location, self.destination]
+                self.destination_index = 1
             else:
                 self.change_state("terminated")
+                self.path =[]
 
     def _calculate_leaf_node_score(self):
         """
         update the score and others_score values using the heuristics
         :return:
         """
-        self.score = self.heuristic()
-        self.other_agent.score = self.other_agent.heuristic()
+        self.score = self.calc_f()
+
+        self.other_agent.score = self.other_agent.calc_f()
+        self.total_ad_score = self.score - self.other_agent.score
         self.is_cutoff = True
 
 
@@ -177,9 +192,9 @@ class AdversarialAgent(AStarAgent):
         """
         # TODO maybe the score in the other agent is the opposite here
         if self.decision_type == "max":
-            return max(option_list, key=lambda x: x.score-x.other_agent.score)
+            return max(option_list, key=lambda x: x.score - x.other_agent.score)
         elif self.decision_type == "min":
-            return min(option_list, key=lambda x: x.score-x.other_agent.score)
+            return min(option_list, key=lambda x: x.score - x.other_agent.score)
         else:
             raise ValueError("unknown decision type")
 
@@ -195,7 +210,7 @@ class AdversarialAgent(AStarAgent):
         pos = hierarchy_pos(G, 0, width=2 * math.pi, xcenter=0)
         # new_pos = {u: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items()}
 
-        node_labels = nx.get_node_attributes(G, 'score')
+        node_labels = nx.get_node_attributes(G, 'total_ad_score')
 
         # print graph
         nx.draw(G, pos=pos, node_size=50, labels=node_labels)
@@ -214,6 +229,7 @@ class AdversarialAgent(AStarAgent):
 
         label_printer(G, pos, "location", 1)
         label_printer(G, pos, "other_score", -1)
+        label_printer(G, pos, "score", -2.9999)
 
         # label_printer(G, pos, "location", 2)
 

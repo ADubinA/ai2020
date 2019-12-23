@@ -46,8 +46,8 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
     agents = [SelectedAgent("A1", 1),
               SelectedAgent("A2", 2)]
-    agents[0].decision_type = "max"
-    agents[1].decision_type = "min"
+    agents[0].decision_type = "min"
+    agents[1].decision_type = "max"
 
     agents[0].set_other_agent(agents[1])
     agents[1].set_other_agent(agents[0])
