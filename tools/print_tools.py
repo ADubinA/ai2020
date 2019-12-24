@@ -112,4 +112,4 @@ def label_printer(G, pos, dict_key, spacing=1):
     for node, attr in node_labels.items():
         custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
 
-    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=8)
+    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=5)

@@ -578,7 +578,7 @@ class AStarAgent(Greedy):
         if self.time_remaining_to_dest <= 0:
             # perform checks if either destination or source were destroyed while travelling
             if global_env.get_attr(self.destination, "deadline") <= global_env.time:
-                self.change_state("terminated")
+                self.change_state("finished")
                 self.act(global_env)
                 return
 
@@ -747,7 +747,6 @@ class LimitedAStarAgent(AStarAgent):
         if len(self.path) <= 1:
             self.change_state("terminated")
             score = self.people_saved
-            print("self location: {}".format(self.location))
             if not global_env.get_attr(self.location, "shelter") > 0 or \
                     not (global_env.get_attr(self.location, "deadline") >= global_env.time):
                 score -= (K + self.people_carried)

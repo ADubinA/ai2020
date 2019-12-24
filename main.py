@@ -46,8 +46,8 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
     agents = [SelectedAgent("A1", 1),
               SelectedAgent("A2", 3)]
-    agents[0].decision_type = "min"
-    agents[1].decision_type = "max"
+    # agents[0].decision_type = "min"
+    # agents[1].decision_type = "max"
 
     agents[0].set_other_agent(agents[1])
     agents[1].set_other_agent(agents[0])
@@ -75,8 +75,10 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
         time.sleep(seconds_per_tick)
         iteration += 1
-    display(env,agents)
+    for agent in agents:
+        print(f"agent {agent.name} has score {agent.score}")
+    display(env, agents)
 
 
 if __name__ == "__main__":
-    main("test/adv/adverserial_graph.json",1)
+    main("test/adv/adverserial_graph.json",0.05)
