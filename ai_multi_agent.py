@@ -1,10 +1,10 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 2
+MAX_LEVEL = 3
 from tools.tools import *
 
-class AdversarialAgent(AStarAgent):
+class AdversarialAgent(LimitedAStarAgent):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
         self.states["minmax"] = self._act_minmax
@@ -13,10 +13,21 @@ class AdversarialAgent(AStarAgent):
         self.beta = float("infinity")
         self.score = None
         self.other_agent = None
+        self.total_ad_score = None
         self.decision_type = "max"
         self.current_options = []  # a list of agents, where each agent is the rival.
         self.level = -1  # where in the tree the agent is been developed
         self.is_cutoff = False  # is used for graph visualization
+    def _act_finished_traversing(self, global_env):
+        if len(self.path) <= 1:
+            self.change_state("terminated")
+            score = self.people_saved
+            if not global_env.get_attr(self.location, "shelter") > 0 or \
+                    not (global_env.get_attr(self.location, "deadline") >= global_env.time):
+                score -= (K + self.people_carried)
+            self.score = score
+        else:
+            self.change_state("minmax")
 
     def set_other_agent(self, other_agent):
         self.other_agent = other_agent
@@ -33,7 +44,6 @@ class AdversarialAgent(AStarAgent):
     def _simulate_arrival(self):
         self.location = self.destination
         self._actions_for_arriving_at_node()
-
 
     def _simulate(self):
         """
@@ -91,6 +101,7 @@ class AdversarialAgent(AStarAgent):
             other_agent_copy = copy.deepcopy(self.other_agent)
             other_agent_copy.set_environment(option.local_environment)
             other_agent_copy.set_other_agent(option)
+
             if other_agent_copy.active_state == "minmax":
                 other_agent_copy.active_state = "traversing"
 
@@ -101,30 +112,29 @@ class AdversarialAgent(AStarAgent):
 
 
         # will call simulate here
-    # def _calculate_leaf_node_score(self):
-    #     """
-    #     update the score and others_score values using the heuristics
-    #     :return:
-    #     """
-    #     self.score = self.calc_f()
-    #     self.other_agent.score = self.other_agent.calc_f()
-    #     self.is_cutoff = True
 
-    def ab_prune(self, optimal_option):
-        prune = False
-        if (self.decision_type == "max"):
-            if (self.beta <= self.alpha):
-                prune = True
-        else:
-            if (self.decision_type == "min"):
-                if (self.beta <= self.alpha):
-                    prune = True
-        return prune
+    def ab_prune(self):
+        """
+        will prune the current_options variable using alpha beta pruning.
+        :return:
+        """
+        # TODO this
+        pass
 
     def _act_minmax(self, global_env):
+        self.decision_type = "min"
+        self.other_agent.decision_type = "max"
+
+        self.other_agent.current_options = []
+        self.current_options = []
+
         optimal_option = self._minmax()
         self._extract_optimal_move(optimal_option, global_env)
-        self.print_decision()
+
+        # self.print_decision()
+
+        self.other_agent.current_options = []
+        self.current_options = []
         self.act(global_env)
 
     def _minmax(self):
@@ -142,6 +152,7 @@ class AdversarialAgent(AStarAgent):
         # calculate all possible actions. If traversing, will keep traversing
         self.current_options = self._calculate_options()
         # alpha beta prune
+        self.ab_prune()
 
         # check every non pruned options
         for option in self.current_options:
@@ -149,14 +160,14 @@ class AdversarialAgent(AStarAgent):
 
         # get score (depends on type of class)  is all the children
         optimal_option = self._choose_optimal(self.current_options)
-        self.score = optimal_option.score
-        self.other_agent.score = optimal_option.other_agent.score
-        if (self.decision_type == "max"):
-            self.alpha = self.score
-            self.beta = self.other_agent.score
+        self.score = optimal_option.other_agent.score
+        self.other_agent.score = optimal_option.score
+        if self.decision_type == "min":
+            self.total_ad_score = self.score - self.other_agent.score
         else:
-            self.alpha = self.other_agent.score
-            self.beta = self.score
+            self.total_ad_score = self.other_agent.score - self.score
+
+
 
         # extract the optimal movement for self
         return optimal_option
@@ -165,14 +176,19 @@ class AdversarialAgent(AStarAgent):
 
         # terminate option
         if optimal_option.other_agent.active_state == "terminated":
+            self.path = []
+            super()._act_finished_traversing(global_env)
             self.change_state("terminated")
 
         # traversing option
         elif optimal_option.other_agent.active_state == "traversing":
-            if self.location != optimal_option.destination:
-                self.traverse_to_node(optimal_option.destination, global_env)
+            if self.location != optimal_option.other_agent.destination:
+                self.traverse_to_node(optimal_option.other_agent.destination, global_env)
+                self.path = [self.location, self.destination]
+                self.destination_index = 1
             else:
                 self.change_state("terminated")
+                self.path =[]
 
     def _calculate_leaf_node_score(self):
         """
@@ -180,14 +196,9 @@ class AdversarialAgent(AStarAgent):
         :return:
         """
         self.score = self.calc_f()
+
         self.other_agent.score = self.other_agent.calc_f()
-        if self.decision_type == "max":
-            self.alpha = self.score
-            self.beta = self.other_agent.score
-            #TODO Might not be true.
-        else:
-            self.alpha = self.other_agent.score
-            self.beta = self.score
+        self.total_ad_score = self.score - self.other_agent.score
         self.is_cutoff = True
 
 
@@ -199,9 +210,9 @@ class AdversarialAgent(AStarAgent):
         """
         # TODO maybe the score in the other agent is the opposite here
         if self.decision_type == "max":
-            return max(option_list, key=lambda x: x.score-x.other_agent.score)
+            return max(option_list, key=lambda x: -x.score + x.other_agent.score)
         elif self.decision_type == "min":
-            return min(option_list, key=lambda x: x.score-x.other_agent.score)
+            return min(option_list, key=lambda x: -x.score + x.other_agent.score)
         else:
             raise ValueError("unknown decision type")
 
@@ -212,30 +223,36 @@ class AdversarialAgent(AStarAgent):
         :param max_level:
         :return:
         """
+        plt.figure(figsize=(40, 40), dpi=200)
+
         # this will print radially the nodes
         G = covert_local_to_global_tree(self)
         pos = hierarchy_pos(G, 0, width=2 * math.pi, xcenter=0)
         # new_pos = {u: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items()}
 
-        node_labels = nx.get_node_attributes(G, 'score')
+        node_labels = nx.get_node_attributes(G, 'total_ad_score')
 
         # print graph
-        nx.draw(G, pos=pos, node_size=50, labels=node_labels)
+        nx.draw(G, pos=pos, node_size=10, labels=node_labels)
 
         # print A1 nodes
         a1_node_list = [node for node in G.nodes if G.nodes[node]["name"]=="A1"]
-        nx.draw_networkx_nodes(G, pos=pos, nodelist=a1_node_list, node_color='blue', node_size=200,  labels=node_labels)
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=a1_node_list, node_color='blue',
+                               node_size=50,  labels=node_labels, font_size=1)
         # print A2 nodes
 
         a2_node_list = [node for node in G.nodes if G.nodes[node]["name"]=="A2"]
-        nx.draw_networkx_nodes(G, pos=pos, nodelist=a2_node_list, node_color='green', node_size=200,  labels=node_labels)
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=a2_node_list, node_color='green', node_size=50,
+                               labels=node_labels, font_size=1)
 
         terminated_list = [node for node in G.nodes if G.nodes[node]["active_state"] == "terminated"]
-        nx.draw_networkx_nodes(G, pos=pos, nodelist=terminated_list, node_color='red', node_size=100,  labels=node_labels)
+        nx.draw_networkx_nodes(G, pos=pos, nodelist=terminated_list, node_color='red', node_size=25,
+                               labels=node_labels, font_size=1)
         # nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
 
         label_printer(G, pos, "location", 1)
         label_printer(G, pos, "other_score", -1)
+        label_printer(G, pos, "score", -2.9999)
 
         # label_printer(G, pos, "location", 2)
 

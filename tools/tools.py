@@ -11,15 +11,14 @@ def clear_data(agent):
 
     # start the heap and set the graph with a root of root
     heap = [agent]
-
     # loop until the heap is empty
     while len(heap) != 0:
         parent = heap.pop()
 
         # for every agent check if it's not a leaf add children to heap
         for child in parent.current_options:
-            if not child.is_cutoff:
-                heap.append(child)
+            heap.append(child)
+            if child.is_cutoff:
                 del child
 
         if parent != agent:
