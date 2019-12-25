@@ -94,7 +94,6 @@ class Agent:
         """
 
     def heuristic(self):
-        #problem here, if there are no reachable nodes than the heuristic malfunctions
         heuristic_value = 0
         if self.active_state != "terminated":
             for people_node in self.nodes_containing_people:
@@ -122,6 +121,7 @@ class Agent:
                      #   heuristic_value -= self.local_environment.get_attr(people_node, "people")
                     if len(shelter_paths) >= 1:
                         heuristic_value -= self.local_environment.get_attr(people_node, "people")
+
         return heuristic_value
 
     def filter_savable(self, source, nodes, key, time=0):
@@ -144,7 +144,7 @@ class Agent:
         return savable_path
 
     def set_environment(self, global_env):
-        self.local_environment = copy.deepcopy(global_env)
+        self.local_environment = global_env
         self.nodes_containing_people = [node for node in global_env.graph.nodes if
                                         global_env.get_attr(node, "people") > 0]
 
@@ -153,7 +153,8 @@ class Agent:
                                                                      self.active_state, self.local_environment.time))
         print("agent {} is carrying {} and acting at time {}".format(self.name,
                                                                      self.carry_num, self.local_environment.time))
-        # print("heuristics = " + str(self.heuristic()))
+        print("agent {} is has saved {} at time {}".format(self.name,
+                                                                     self.people_saved, self.local_environment.time))
         self.states[self.active_state](global_env)
 
     def _act_no_op(self, gloval_env):
@@ -553,6 +554,7 @@ class AStarAgent(Greedy):
         if global_env.get_attr(self.location, "shelter") == 0:
             score -= (K + self.carry_num)
         self.score = score
+        msg = "inside _act_terminated, agent named: {} has a score of: {}"
 
     def calc_f(self):
         score = self.heuristic() + self.calculate_real_score()

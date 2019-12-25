@@ -54,7 +54,6 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
     # update the world for every agent at startup
     for agent in agents:
         agent.set_environment(env)
-
     iteration = 0
     while iteration < max_tick:
         display(env, agents)
@@ -81,4 +80,4 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
 
 if __name__ == "__main__":
-    main("test/adv/adverserial_graph.json",0.05)
+    main("test/adv/adverserial_graph.json", 0.55)

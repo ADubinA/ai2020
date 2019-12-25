@@ -1,7 +1,8 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 3
+MAX_LEVEL = 2
+DEBUG = True
 from tools.tools import *
 
 class AdversarialAgent(LimitedAStarAgent):
@@ -12,6 +13,7 @@ class AdversarialAgent(LimitedAStarAgent):
         self.alpha = -float("infinity")
         self.beta = float("infinity")
         self.score = None
+        self.temp_score = None
         self.other_agent = None
         self.total_ad_score = None
         self.decision_type = "max"
@@ -131,7 +133,8 @@ class AdversarialAgent(LimitedAStarAgent):
         optimal_option = self._minmax()
         self._extract_optimal_move(optimal_option, global_env)
 
-        # self.print_decision()
+        if (DEBUG):
+            self.print_decision()
 
         self.other_agent.current_options = []
         self.current_options = []
@@ -160,12 +163,14 @@ class AdversarialAgent(LimitedAStarAgent):
 
         # get score (depends on type of class)  is all the children
         optimal_option = self._choose_optimal(self.current_options)
-        self.score = optimal_option.other_agent.score
-        self.other_agent.score = optimal_option.score
+        # self.score = optimal_option.other_agent.score
+        # self.other_agent.score = optimal_option.score
+        self.temp_score = optimal_option.other_agent.temp_score
+        self.other_agent.temp_score = optimal_option.temp_score
         if self.decision_type == "min":
-            self.total_ad_score = self.score - self.other_agent.score
+            self.total_ad_score = self.temp_score - self.other_agent.temp_score
         else:
-            self.total_ad_score = self.other_agent.score - self.score
+            self.total_ad_score = self.other_agent.temp_score - self.temp_score
 
 
 
@@ -189,16 +194,17 @@ class AdversarialAgent(LimitedAStarAgent):
             else:
                 self.change_state("terminated")
                 self.path =[]
+                super()._act_finished_traversing(global_env)
 
     def _calculate_leaf_node_score(self):
         """
         update the score and others_score values using the heuristics
         :return:
         """
-        self.score = self.calc_f()
-
-        self.other_agent.score = self.other_agent.calc_f()
-        self.total_ad_score = self.score - self.other_agent.score
+        self.temp_score = self.calc_f()
+        self.other_agent.temp_score = self.other_agent.calc_f()
+        # print("calculating leaf node. Score: {}   other score: {}".format(self.temp_score, self.other_agent.temp_score))
+        self.total_ad_score = self.temp_score - self.other_agent.temp_score
         self.is_cutoff = True
 
 
@@ -210,9 +216,9 @@ class AdversarialAgent(LimitedAStarAgent):
         """
         # TODO maybe the score in the other agent is the opposite here
         if self.decision_type == "max":
-            return max(option_list, key=lambda x: -x.score + x.other_agent.score)
+            return max(option_list, key=lambda x: -x.temp_score + x.other_agent.temp_score)
         elif self.decision_type == "min":
-            return min(option_list, key=lambda x: -x.score + x.other_agent.score)
+            return min(option_list, key=lambda x: -x.temp_score + x.other_agent.temp_score)
         else:
             raise ValueError("unknown decision type")
 
@@ -256,5 +262,5 @@ class AdversarialAgent(LimitedAStarAgent):
 
         # label_printer(G, pos, "location", 2)
 
+        # plt.savefig("blorg.png")
         plt.show()
-

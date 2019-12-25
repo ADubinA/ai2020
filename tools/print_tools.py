@@ -77,7 +77,7 @@ def covert_local_to_global_tree(root):
     # start the heap and set the graph with a root of root
     heap = [(0, root)]
     G = nx.Graph()
-    G.add_node(0, score=root.score, other_score=root.other_agent.score,total_ad_score=root.total_ad_score,
+    G.add_node(0, score=root.temp_score, other_score=root.other_agent.temp_score,total_ad_score=root.temp_score,
                name=root.name, alpha=root.alpha, beta=root.beta, location=root.location,
                level=root.level, active_state=root.active_state)
 
@@ -92,8 +92,10 @@ def covert_local_to_global_tree(root):
                 heap.append((node_index, child))
 
             # add the kid to the tree
-            G.add_node(node_index, score=child.score, other_score=child.other_agent.score
-                       ,total_ad_score=child.total_ad_score,
+            score_msg_preformat = "{}:{}"
+            score_msg = score_msg_preformat.format(child.name, child.temp_score)
+            G.add_node(node_index, score=score_msg, other_score=child.other_agent.temp_score
+                       , total_ad_score=child.total_ad_score,
                        name=child.name, alpha=child.alpha, beta=child.beta,
                        location=child.location, level=child.level, active_state=child.active_state)
             G.add_edge(parent_index, node_index)
