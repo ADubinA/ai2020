@@ -1,6 +1,6 @@
 import time
 from environment import Environment
-from ai_multi_agent import AdversarialAgent as SelectedAgent
+from ai_multi_agent import *
 import networkx as nx
 import matplotlib.pyplot as plt
 from tools.tools import *
@@ -44,8 +44,10 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
     env = Environment(save_dir)
 
-    agents = [SelectedAgent("A1", 1),
-              SelectedAgent("A2", 3)]
+    agents = [AdversarialAgent("A1", 1),
+              AdversarialAgent("A2", 3)]
+
+
     # agents[0].decision_type = "min"
     # agents[1].decision_type = "max"
 
@@ -56,11 +58,13 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
         agent.set_environment(env)
     iteration = 0
     while iteration < max_tick:
-        display(env, agents)
+        # display(env, agents)
         if is_terminated(agents):
             break
 
-        for agent in agents:
+        for i in range(len(agents)):
+            manager = AgentsManager([agents[i], agents[not i]])
+            manager.starting_minmax()
             agent.act(env)
             agents[0].set_environment(env)
             agents[1].set_environment(env)

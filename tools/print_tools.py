@@ -1,6 +1,7 @@
 import networkx as nx
 import random
-
+import math
+import matplotlib.pyplot as plt
 def hierarchy_pos(G, root=None, width=1., vert_gap = 0.2, vert_loc = 0, xcenter = 0.5):
 
     '''
@@ -75,6 +76,7 @@ def covert_local_to_global_tree(root):
     """
 
     # start the heap and set the graph with a root of root
+    raise  NotImplemented("dont use this function, it's for the old code")
     heap = [(0, root)]
     G = nx.Graph()
     G.add_node(0, score=root.temp_score, other_score=root.other_agent.temp_score,total_ad_score=root.temp_score,
@@ -103,15 +105,59 @@ def covert_local_to_global_tree(root):
 
     return G
 
+def print_decision_tree(tree):
+    """
+    will print the tree for the use of AgentsManager
+    """
+    G = tree
 
+    # for node in G.nodes:
+        # G[node]["decider_score"] = G.nodes[node]["agents"][0].score
+        # G[node]["other_score"] = G.nodes[node]["agents"][1].score
+        # G[node]["location"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].location
+        # G[node]["destination"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].destination
+
+    pos = hierarchy_pos(G, 0, width=2 * math.pi, xcenter=0)
+    # new_pos = {u: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items()}
+
+
+    # print graph
+    nx.draw(G, pos=pos, node_size=10, labels=None)
+
+    # print A1 nodes
+    a1_node_list = [node for node in G.nodes if G.nodes[node]["level"] % 2 == 0]
+    nx.draw_networkx_nodes(G, pos=pos, nodelist=a1_node_list, node_color='blue',
+                           node_size=50, labels=None, font_size=1)
+    # print A2 nodes
+
+    a2_node_list = [node for node in G.nodes if G.nodes[node]["level"] % 2 == 1]
+    nx.draw_networkx_nodes(G, pos=pos, nodelist=a2_node_list, node_color='green', node_size=50,
+                           labels=None, font_size=1)
+
+    terminated_list = [node for node in G.nodes if G.nodes[node]["agents"][G.nodes[node]["level"]%2] == "terminated"]
+    nx.draw_networkx_nodes(G, pos=pos, nodelist=terminated_list, node_color='red', node_size=25,
+                           labels=None, font_size=1)
+    # nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
+
+    # label_printer(G, pos, "destination", 2)
+    # label_printer(G, pos, "location", 1)
+    # label_printer(G, pos, "other_score", -1)
+    # label_printer(G, pos, "decider_score", -2)
+    label_printer(G, pos, "optimal_child_score", 0)
+
+    # label_printer(G, pos, "location", 2)
+
+    decider = tree.nodes[0]["agents"][0]
+    plt.title(f"Current decider is {decider}")
+    plt.show()
 def label_printer(G, pos, dict_key, spacing=1):
     pos_attrs = {}
     for node, coords in pos.items():
-        pos_attrs[node] = (coords[0], coords[1] + spacing * 0.03)
+        pos_attrs[node] = (coords[0], coords[1] + spacing * 0.5)
 
     node_labels = nx.get_node_attributes(G, dict_key)
     custom_node_attrs = {}
     for node, attr in node_labels.items():
         custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
 
-    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=5)
+    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=10)
