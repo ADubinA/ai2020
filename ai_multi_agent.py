@@ -1,7 +1,7 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 2
+MAX_LEVEL = 4
 DEBUG = True
 from tools.tools import *
 from itertools import count
@@ -12,6 +12,7 @@ class AdversarialAgent(LimitedAStarAgent):
     def __init__(self, name, starting_node):
         super().__init__(name, starting_node)
         # self.states["minmax"] = self._act_minmax
+        # TODO Change the initial state
         self.active_state = "traversing"
         self.inner_score = None # will keep the heuristic score for the decision tree
 

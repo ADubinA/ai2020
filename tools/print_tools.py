@@ -109,13 +109,15 @@ def print_decision_tree(tree):
     """
     will print the tree for the use of AgentsManager
     """
+
     G = tree
 
-    # for node in G.nodes:
-        # G[node]["decider_score"] = G.nodes[node]["agents"][0].score
-        # G[node]["other_score"] = G.nodes[node]["agents"][1].score
-        # G[node]["location"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].location
-        # G[node]["destination"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].destination
+    for node in G.nodes:
+        G.nodes[node]["decider_score"] = G.nodes[node]["agents"][0].inner_score
+        G.nodes[node]["decider_state"] = G.nodes[node]["agents"][0].active_state
+        G.nodes[node]["other_score"] = G.nodes[node]["agents"][1].inner_score
+        G.nodes[node]["location"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].location
+        G.nodes[node]["destination"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].destination
 
     pos = hierarchy_pos(G, 0, width=2 * math.pi, xcenter=0)
     # new_pos = {u: (r * math.cos(theta), r * math.sin(theta)) for u, (theta, r) in pos.items()}
@@ -139,10 +141,11 @@ def print_decision_tree(tree):
                            labels=None, font_size=1)
     # nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
 
-    # label_printer(G, pos, "destination", 2)
-    # label_printer(G, pos, "location", 1)
-    # label_printer(G, pos, "other_score", -1)
-    # label_printer(G, pos, "decider_score", -2)
+    label_printer(G, pos, "destination", 3)
+    label_printer(G, pos, "location", 1.5)
+    label_printer(G, pos, "other_score", -1.5)
+    label_printer(G, pos, "decider_score", -3)
+    label_printer(G, pos, "decider_state", -4.5)
     label_printer(G, pos, "optimal_child_score", 0)
 
     # label_printer(G, pos, "location", 2)
@@ -153,11 +156,11 @@ def print_decision_tree(tree):
 def label_printer(G, pos, dict_key, spacing=1):
     pos_attrs = {}
     for node, coords in pos.items():
-        pos_attrs[node] = (coords[0], coords[1] + spacing * 0.5)
+        pos_attrs[node] = (coords[0], coords[1] + spacing * 0.005)
 
     node_labels = nx.get_node_attributes(G, dict_key)
     custom_node_attrs = {}
     for node, attr in node_labels.items():
         custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
 
-    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=10)
+    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=7.5)
