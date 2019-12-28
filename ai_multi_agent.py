@@ -44,7 +44,7 @@ class AgentsManager:
         self.agents[0].destination = actions_to_perform["destination"]
         self.agents[0].time_remaining_to_dest = actions_to_perform["time_to_dest"]
         return actions_to_perform
-
+        # blorg
         # TODO extract action to do in the real world
 
 
