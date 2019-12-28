@@ -98,7 +98,8 @@ class Agent:
         if self.active_state != "terminated":
             for people_node in self.nodes_containing_people:
                 heuristic_value += self.local_environment.get_attr(people_node, "people")
-            people_paths = self.filter_savable(self.location, self.nodes_containing_people, "people", time = self.curr_time())
+            people_paths = self.filter_savable(self.location,
+                                               self.nodes_containing_people, "people", time = self.curr_time())
             for people_node, people_path in people_paths.items():
                 if people_path is None:
                     continue
@@ -121,7 +122,7 @@ class Agent:
                      #   heuristic_value -= self.local_environment.get_attr(people_node, "people")
                     if len(shelter_paths) >= 1:
                         heuristic_value -= self.local_environment.get_attr(people_node, "people")
-
+        heuristic_value -= self.carry_num
         return heuristic_value
 
     def filter_savable(self, source, nodes, key, time=0):
@@ -612,6 +613,8 @@ class AStarAgent(Greedy):
         will preform all actions and checks that are needed when landing on a new node.
         :return:
         """
+        self.location = self.destination
+
         if self.local_environment.get_attr(self.location, "people") > 0:
             self.carry_num += self.local_environment.get_attr(self.location, "people")
             self.local_environment.change_attr(self.location, "people", 0)

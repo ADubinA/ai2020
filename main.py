@@ -50,26 +50,22 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
     # agents[0].decision_type = "min"
     # agents[1].decision_type = "max"
-
-    agents[0].set_other_agent(agents[1])
-    agents[1].set_other_agent(agents[0])
     # update the world for every agent at startup
     for agent in agents:
         agent.set_environment(env)
     iteration = 0
     while iteration < max_tick:
-        # display(env, agents)
+        display(env, agents)
+        # asd = input()
         if is_terminated(agents):
             break
 
         for i in range(len(agents)):
             manager = AgentsManager([agents[i], agents[not i]])
-            manager.starting_minmax()
-            agent.act(env)
+            actions_to_perform = manager.starting_minmax()
+            agents[i].act(env)
             agents[0].set_environment(env)
             agents[1].set_environment(env)
-            # agents[0].set_other_agent(agents[1])
-            # agents[1].set_other_agent(agents[0])
         # update the world for every agent
 
         env.tick()

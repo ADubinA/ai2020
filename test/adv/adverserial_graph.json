@@ -23,7 +23,7 @@
               "name": 4,
               "deadline": 5,
               "shelter": false,
-              "people": 4
+              "people": 6
             }
           ],
   "edges":
@@ -31,13 +31,13 @@
     {
       "from": 1,
       "to": 2,
-      "weight": 2,
+      "weight": 3,
       "blocked": false
     },
     {
       "from": 1,
       "to": 4,
-      "weight": 2,
+      "weight": 3,
       "blocked": false
     },
     {
