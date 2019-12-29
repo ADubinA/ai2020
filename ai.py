@@ -150,8 +150,15 @@ class Agent:
                                         global_env.get_attr(node, "people") > 0]
 
     def act(self, global_env):
-        print("agent {} is in state {} and acting at time {}".format(self.name,
-                                                                     self.active_state, self.local_environment.time))
+        if self.active_state == "traversing":
+           print("agent {} is in state {} and traversing to {} at time {}".format(self.name,
+                                                                                  self.active_state,
+                                                                                  self.destination,
+                                                                                  self.local_environment.time))
+        else:
+            print("agent {} is in state {} and acting at time {}".format(self.name,
+                                                                         self.active_state,
+                                                                         self.local_environment.time))
         print("agent {} is carrying {} and acting at time {}".format(self.name,
                                                                      self.carry_num, self.local_environment.time))
         print("agent {} is has saved {} at time {}".format(self.name,

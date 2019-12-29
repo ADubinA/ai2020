@@ -122,7 +122,7 @@ def print_decision_tree(tree):
     for node in G.nodes:
         G.nodes[node]["de_score"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].inner_score
         G.nodes[node]["de_state"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].active_state
-        G.nodes[node]["otr_score"] = G.nodes[node]["agents"][1].inner_score
+        G.nodes[node]["otr_score"] = G.nodes[node]["agents"][(G.nodes[node]["level"] + 1)% 2].inner_score
         G.nodes[node]["loc"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].location
         G.nodes[node]["dest"] = G.nodes[node]["agents"][G.nodes[node]["level"] % 2].destination
 
@@ -178,4 +178,4 @@ def label_printer(G, pos, dict_key, spacing=1):
     for node, attr in node_labels.items():
         custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
 
-    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=RATIO*1.7)
+    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=RATIO*3)

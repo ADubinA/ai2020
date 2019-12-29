@@ -2,6 +2,7 @@ from ai import *
 import networkx as nx
 from tools.print_tools import *
 MAX_LEVEL = 4
+# DEBUG = True
 DEBUG = False
 from tools.tools import *
 from itertools import count
@@ -15,6 +16,10 @@ class AdversarialAgent(LimitedAStarAgent):
         # TODO Change the initial state
         self.active_state = "traversing"
         self.inner_score = None # will keep the heuristic score for the decision tree
+        if self.name == "A1":
+            self.icon = plt.imread("icons/a.jpg")
+        else:
+            self.icon = plt.imread("icons/b.jpg")
 
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1
@@ -88,7 +93,7 @@ class AgentsManager:
         for acted_agent in acted_agents_list:
             agents_tuple_post_activation = self._generate_child_node(parent, acted_agent)
 
-            new_child_index = self.attach_agents_to_nodes(agents_tuple_post_activation, parent, level)
+            new_child_index = self.attach_agents_to_nodes(agents_tuple_post_activation, parent, level+1)
             # calls recursion
             self.minmax_rec(new_child_index, level + 1)
 
@@ -150,7 +155,7 @@ class AgentsManager:
         optimality is determined by the level ( and game type)
         returns the optimal child and the score used to calculate it's optimality
         """
-        children = neighbors = self.tree.neighbors(parent)
+        children = list(self.tree.neighbors(parent))
         if self.tree.nodes[parent]["decision_type"] == "max":
             optimal_index = max(children, key=lambda x: self.optimality_opp(x))
         elif self.tree.nodes[parent]["decision_type"] == "min":
@@ -273,3 +278,54 @@ class AgentsManager:
 
     def simulate(self):
         pass
+
+
+class SemiCoopManager(AgentsManager):
+
+    @staticmethod
+    def change_decision(decision_string):
+        return "min"
+
+    def _get_optimal_child(self, parent):
+        """
+        from a parent will calculate the optimal child
+        optimality is determined by the level ( and game type)
+        returns the optimal child and the score used to calculate it's optimality
+        """
+        children = list(self.tree.neighbors(parent))
+        if self.tree.nodes[parent]["decision_type"] == "min":
+            optimal_index = min(children, key=lambda x: self.optimality_opp(x))
+            # tie breaking
+            optimal_list = [child for child in children if
+                            self.optimality_opp(child) == self.optimality_opp(optimal_index)]
+            optimal_index = min(optimal_list, key=lambda x: self._tie_breaking(x))
+        else:
+            raise ValueError()
+        return optimal_index, self.optimality_opp(optimal_index)
+
+    def optimality_opp(self, node):
+        agents = self.tree.nodes[node]["agents"]
+        level = self.tree.nodes[node]["level"]
+        acting_agent = agents[(level+1) % 2]
+        return acting_agent.inner_score
+
+    def _tie_breaking(self, node):
+        agents = self.tree.nodes[node]["agents"]
+        level = self.tree.nodes[node]["level"]
+        acting_agent = agents[(level) % 2]
+        return acting_agent.inner_score
+
+class CoopManager(AgentsManager):
+    def _get_optimal_child(self, parent):
+        """
+        from a parent will calculate the optimal child
+        optimality is determined by the level ( and game type)
+        returns the optimal child and the score used to calculate it's optimality
+        """
+        children = list(self.tree.neighbors(parent))
+        optimal_index = min(children, key=lambda x: self.optimality_opp(x))
+        return optimal_index, self.optimality_opp(optimal_index)
+
+    def optimality_opp(self, node):
+        agents = self.tree.nodes[node]["agents"]
+        return agents[0].inner_score + agents[1].inner_score

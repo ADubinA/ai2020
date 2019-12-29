@@ -44,8 +44,8 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
     env = Environment(save_dir)
 
-    agents = [AdversarialAgent("A1", 1),
-              AdversarialAgent("A2", 3)]
+    agents = [AdversarialAgent("A1", 0),
+              AdversarialAgent("A2", 2)]
 
 
     # agents[0].decision_type = "min"
@@ -61,7 +61,7 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
             break
 
         for i in range(len(agents)):
-            manager = AgentsManager([agents[i], agents[not i]])
+            manager = Manager([agents[i], agents[not i]])
             actions_to_perform = manager.starting_minmax()
             agents[i].act(env)
             agents[0].set_environment(env)
@@ -80,4 +80,5 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
 
 if __name__ == "__main__":
-    main("test/adv/adverserial_graph.json", 0.55)
+    Manager = CoopManager
+    main("test/adv/semi-Coop-Graph.json", 0.55)

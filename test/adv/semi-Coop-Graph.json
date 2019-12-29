@@ -4,25 +4,25 @@
             {
               "name": 0,
               "deadline": 2,
-              "shelter": false,
+              "shelter": true,
               "people": 0
             },
                         {
               "name": 1,
               "deadline": 2,
-              "shelter": true,
+              "shelter": false,
               "people": 2
             },
                         {
               "name": 2,
-              "deadline": 2,
-              "shelter": false,
+              "deadline": 5,
+              "shelter": true,
               "people": 0
             },
                         {
               "name": 3,
               "deadline": 2,
-              "shelter": true,
+              "shelter": false,
               "people": 2
             }
           ],
@@ -49,7 +49,8 @@
     {
       "from": 2,
       "to": 1,
-      "weight": 2,
+      "weight": 1,
       "blocked": false
     }
+    ]
 }
