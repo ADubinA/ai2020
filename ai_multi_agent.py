@@ -2,11 +2,11 @@ from ai import *
 import networkx as nx
 from tools.print_tools import *
 MAX_LEVEL = 4
-# DEBUG = True
-DEBUG = False
+DEBUG = True
+# DEBUG = False
 from tools.tools import *
 from itertools import count
-from networkx.algorithms.dag import descendants
+from networkx import DiGraph
 
 
 class AdversarialAgent(LimitedAStarAgent):
@@ -40,7 +40,8 @@ class AgentsManager:
         level_num = 0
         self.tree.add_node(next(self.node_name_gen), agents=self.agents,
                            decision_type=node_type, optimal_child=None,
-                           opt_child_score=None, level=level_num)
+                           opt_child_score=None, level=level_num,
+                           alpha=-float("infinity"), beta=float("infinity"))
         self.minmax_rec(0, level_num)
         if DEBUG:
             print_decision_tree(self.tree)
@@ -87,21 +88,58 @@ class AgentsManager:
         options_list = self.find_options(acting_agent_in_new_env)
         acted_agents_list = self._simulate_options(options_list)
 
-        # TODO ab pruning
 
         # calculate each child for given parent
         for acted_agent in acted_agents_list:
-            agents_tuple_post_activation = self._generate_child_node(parent, acted_agent)
 
-            new_child_index = self.attach_agents_to_nodes(agents_tuple_post_activation, parent, level+1)
+            # checks if the parent is needed to be pruned
+            if self._is_pruned(parent):
+                break
+
             # calls recursion
+            agents_tuple_post_activation = self._generate_child_node(parent, acted_agent)
+            new_child_index = self.attach_agents_to_nodes(agents_tuple_post_activation, parent, level+1)
             self.minmax_rec(new_child_index, level + 1)
+
+            # update ab values
+            self._update_ab_values(new_child_index)
 
         # get optima l child
         optimal_child, optimal_score = self._get_optimal_child(parent)
 
         # update parent
         self._update_parent(parent, optimal_child, optimal_score)
+
+    def _update_ab_values(self, node):
+        """
+        will update the alpha beta value from the current child node, to the root.
+        """
+        # # loop on parent
+        # while True:
+        #     parent = self.tree.predecessors(node)
+        #     if len(parent) == 0:
+        #         break
+        #     parent = parent[0]
+
+        parent = next(self.tree.predecessors(node))
+        # if len(parent) == 0:
+        #     return
+        # update alpha or beta
+        decision_type = self.tree.nodes[parent]["decision_type"]
+        if decision_type == "max":
+            if self.optimality_opp(node) > self.tree.nodes[parent]["alpha"]:
+                self.tree.nodes[parent]["alpha"] = self.optimality_opp(node)
+        else:
+            if self.optimality_opp(node) < self.tree.nodes[parent]["beta"]:
+                self.tree.nodes[parent]["beta"] = self.optimality_opp(node)
+
+    def _is_pruned(self, parent):
+        """
+        will check using the current alpha beta values of the tree if the new child should be pruned
+        """
+        if self.tree.nodes[parent]["alpha"] >= self.tree.nodes[parent]["beta"]:
+            return True
+        return False
 
     def attach_agents_to_nodes(self, agents_tuple, parent, level):
         # adds the child to the tree and change decision_type
@@ -110,7 +148,9 @@ class AgentsManager:
 
         self.tree.add_node(child_index, agents=agents_tuple,
                            decision_type=self.change_decision(current_decision_string),
-                           optimal_child=None, opt_child_score=None, level=level)
+                           optimal_child=None, opt_child_score=None, level=level,
+                           alpha=self.tree.nodes[parent]["alpha"],
+                           beta=self.tree.nodes[parent]["beta"])
         self.tree.add_edge(parent, child_index)
 
         return child_index
@@ -315,6 +355,9 @@ class SemiCoopManager(AgentsManager):
         acting_agent = agents[(level) % 2]
         return acting_agent.inner_score
 
+    def _is_pruned(self, parent):
+        return False
+
 class CoopManager(AgentsManager):
     def _get_optimal_child(self, parent):
         """
@@ -329,3 +372,6 @@ class CoopManager(AgentsManager):
     def optimality_opp(self, node):
         agents = self.tree.nodes[node]["agents"]
         return agents[0].inner_score + agents[1].inner_score
+
+    def _is_pruned(self, parent):
+        return False

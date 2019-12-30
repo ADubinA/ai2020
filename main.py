@@ -80,5 +80,5 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
 
 if __name__ == "__main__":
-    Manager = CoopManager
+    Manager = AgentsManager
     main("test/adv/semi-Coop-Graph.json", 0.55)
