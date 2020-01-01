@@ -109,7 +109,7 @@ def covert_local_to_global_tree(root):
 
 
 DEBUG = True
-RATIO = 3
+RATIO = 2
 
 
 def print_decision_tree(tree):
@@ -178,4 +178,4 @@ def label_printer(G, pos, dict_key, spacing=1):
     for node, attr in node_labels.items():
         custom_node_attrs[node] = str(dict_key) + ": " + str(attr)
 
-    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=RATIO*3)
+    nx.draw_networkx_labels(G, pos_attrs, labels=custom_node_attrs, font_size=RATIO*2)

@@ -43,9 +43,9 @@ def display(env,agents, save_dir=None):
 def main(save_dir, seconds_per_tick, max_tick=1000):
 
     env = Environment(save_dir)
-
+    ## When running all graph behaviour, change the starting positions to 0 and 1
     agents = [AdversarialAgent("A1", 0),
-              AdversarialAgent("A2", 2)]
+              AdversarialAgent("A2", 1)]
 
 
     # agents[0].decision_type = "min"
@@ -81,4 +81,4 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
 if __name__ == "__main__":
     Manager = AgentsManager
-    main("test/adv/semi-Coop-Graph.json", 0.55)
+    main("test/adv/all_behaviours_graph.json", 1.55)

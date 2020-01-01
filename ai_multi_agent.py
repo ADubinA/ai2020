@@ -1,7 +1,7 @@
 from ai import *
 import networkx as nx
 from tools.print_tools import *
-MAX_LEVEL = 4
+MAX_LEVEL = 8
 DEBUG = True
 # DEBUG = False
 from tools.tools import *
@@ -16,10 +16,10 @@ class AdversarialAgent(LimitedAStarAgent):
         # TODO Change the initial state
         self.active_state = "traversing"
         self.inner_score = None # will keep the heuristic score for the decision tree
-        if self.name == "A1":
-            self.icon = plt.imread("icons/a.jpg")
-        else:
-            self.icon = plt.imread("icons/b.jpg")
+        # if self.name == "A1":
+        #     self.icon = plt.imread("icons/a.jpg")
+        # else:
+        #     self.icon = plt.imread("icons/b.jpg")
 
     def _act_traversing(self, global_env):
         self.time_remaining_to_dest -= 1

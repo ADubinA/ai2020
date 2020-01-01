@@ -17,22 +17,28 @@
               "name": 2,
               "deadline": 1,
               "shelter": false,
-              "people": 2
+              "people": 1
             },
 			{
               "name": 3,
-              "deadline": 2,
+              "deadline": 1,
               "shelter": false,
-              "people": 3
+              "people": 1
             },
 			{
               "name": 4,
-              "deadline": 1,
+              "deadline": 2,
               "shelter": false,
-              "people": 3
+              "people": 1
+            },
+            {
+              "name": 5,
+              "deadline": 2,
+              "shelter": false,
+              "people": 2
             },
                         {
-              "name": 5,
+              "name": 6,
               "deadline": 20,
               "shelter": true,
               "people": 0
@@ -49,7 +55,7 @@
     {
       "from": 0,
       "to": 3,
-      "weight": 2,
+      "weight": 1,
       "blocked": false
     },
     {
@@ -59,7 +65,7 @@
       "blocked": false
     },
     {
-      "from": 1,
+      "from": 2,
       "to": 4,
       "weight": 1,
       "blocked": false
@@ -77,8 +83,14 @@
       "blocked": false
     },
     {
+      "from": 5,
+      "to": 6,
+      "weight": 1,
+      "blocked": false
+    },
+    {
       "from": 4,
-      "to": 5,
+      "to": 6,
       "weight": 1,
       "blocked": false
     }
