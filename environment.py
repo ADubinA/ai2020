@@ -132,7 +132,7 @@ class Environment:
         # add spacing to text
         pos_attrs = {}
         for node, coords in pos.items():
-            pos_attrs[node] = (coords[0], coords[1] + spacing*0.06)
+            pos_attrs[node] = (coords[0], coords[1] + spacing*0.15)
 
         # print the wanted attributes
         node_attrs = nx.get_node_attributes(self.graph, name=dict_key)

@@ -1,5 +1,5 @@
 import time
-from environment import Environment
+from bayes_environment import  BayesEnvironment
 from ai_multi_agent import *
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -29,9 +29,11 @@ def display(env,agents, save_dir=None):
                                  node_size=100,
                                  label_pos=0.3)
 
-    env.print_node_data(pos, "people", 1)
-    env.print_node_data(pos, "shelter", 2)
-    env.print_node_data(pos, "deadline", 3)
+    # env.print_node_data(pos, "people", 1)
+    # env.print_node_data(pos, "shelter", 2)
+    # env.print_node_data(pos, "deadline", 3)
+    env.print_node_data(pos, "flooded", 1)
+    env.print_node_data(pos, "flood_prob", 2)
 
     # draw the rest of the graph
     ax.margins(0.4, 0.4)
@@ -80,5 +82,7 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
 
 
 if __name__ == "__main__":
-    Manager = AgentsManager
-    main("test/adv/all_behaviours_graph.json", 1.55)
+    # Manager = AgentsManager
+    env = BayesEnvironment("test/babyzian/probability_graph1.json")
+    # main("test/adv/all_behaviours_graph.json", 1.55)
+    display(env, [])
