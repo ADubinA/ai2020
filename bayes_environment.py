@@ -10,6 +10,83 @@ class BayesNetwork:
         self.bayesian_graph = nx.DiGraph()
 
 
+    @staticmethod
+    def get_evidence(display_message = True):
+        """
+        ------------NOTE------------
+        Doesn't support nodes that their name include more than a single digit.
+        Hence, a node called 12 won't be parsed.
+        ------------NOTE------------
+
+        :param display_message:
+        :return[List, int], the first element signifying the details of the evidence, the second is the time:
+        """
+        edge_specifier = None
+        vertex_specifier = None
+        evidence_input = None
+        at_time = -1
+        print("Please type evidence:")
+        if (display_message):
+           print("Use the following format: \"E#num-#num #time\" or \"N#num #time\"")
+           print("For example: \"E3-4 2\" to signify the edge between node 3 and node 4 during time 2")
+           print("Or \"N1 7\" to signify the vertex N1 at time 7")
+        while True:
+            number_of_args = 23789
+            while number_of_args != 2:
+                user_input = input()
+                arg_list = user_input.split(" ")
+                print(arg_list)
+                number_of_args = len(arg_list)
+                if (number_of_args != 2):
+                    print("Illegal number of arguments. Please try again")
+            if not arg_list[1].isdigit() and arg_list[1] < 0:
+                print("Illegal time value. Please try again.")
+                continue
+            at_time = arg_list[1]
+            evidence_input = BayesNetwork.parse_first_part_of_evidence_input(arg_list[0])
+            if (len(evidence_input)) == 0:
+                print("Bad edge/node input. Please try again.")
+                continue
+            return [evidence_input, at_time]
+
+
+    @staticmethod
+    def parse_first_part_of_evidence_input(evidence_input):
+        output_list = []
+        evidence_details_list = list(evidence_input)
+        if (evidence_details_list[0] == 'E'):
+            if len(evidence_details_list) == 4:
+                if evidence_details_list[1].isdigit() and evidence_details_list[3].isdigit():
+                    output_list.append('E')
+                    output_list.append(evidence_details_list[1])
+                    output_list.append(evidence_details_list[3])
+
+        elif (evidence_details_list[0] == 'N'):
+            if len(evidence_details_list) == 2:
+                if evidence_details_list[1].isdigit():
+                    output_list.append('N')
+                    output_list.append(evidence_details_list[1])
+        return output_list
+
+
+    @staticmethod
+    def get_option_from_user(min_number_of_option = 0, number_of_options = 4, message = "Please select an option:"):
+        """
+        What is the probability that each of the vertices is flooded?
+        What is the probability that each of the edges is blocked?
+        What is the probability that a certain path (set of edges) is free from blockages? (Note that the distributions of blockages in edges are NOT necessarily independent.)
+        :param number_of_options:
+        :returns: an integer signifying the option selected
+        """
+        while True:
+            option_selected = input(message)
+            if not option_selected.isdigit():
+                print("No number argument detected. Please try again")
+            option_num = int(option_selected)
+            if option_num > number_of_options or option_num < min_number_of_option:
+                print("Option number not in range. Please try again")
+            return option_num
+
     def construct_bn(self, env):
         """
         construct the bayes network without computing the conditional probabilities

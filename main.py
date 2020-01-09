@@ -59,10 +59,12 @@ def display_bn(bn_graph):
 def main(save_dir, seconds_per_tick, max_tick=1000):
 
     env = BayesEnvironment(save_dir)
-    display(env, [])
+    # display(env, [])
     bn = BayesNetwork()
-    bn.construct_bn(env)
-    display_bn(bn.bayesian_graph)
+
+    bn.get_evidence()
+    # bn.construct_bn(env)
+    # display_bn(bn.bayesian_graph)
 
 if __name__ == "__main__":
     # Manager = AgentsManager
