@@ -1,5 +1,5 @@
 import time
-from bayes_environment import  BayesEnvironment
+from bayes_environment import *
 from ai_multi_agent import *
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -42,47 +42,28 @@ def display(env,agents, save_dir=None):
     if not save_dir:
         plt.show()
 
+def display_bn(bn_graph):
+    # create figure with title
+    fig, ax = plt.subplots()
+
+    # even spaced shell layout
+    pos = nx.circular_layout(bn_graph, scale=2)
+    pos = {node: node_pos*0.5 for node,node_pos in pos.items()}
+    # TODO make layput different, by partition?/ time?
+
+    # draw the rest of the graph
+    ax.margins(0.4, 0.4)
+    nx.draw(bn_graph, pos, with_labels=True, font_weight='bold', arrowsize=20)
+    plt.show()
+
 def main(save_dir, seconds_per_tick, max_tick=1000):
 
-    env = Environment(save_dir)
-    ## When running all graph behaviour, change the starting positions to 0 and 1
-    agents = [AdversarialAgent("A1", 0),
-              AdversarialAgent("A2", 1)]
-
-
-    # agents[0].decision_type = "min"
-    # agents[1].decision_type = "max"
-    # update the world for every agent at startup
-    for agent in agents:
-        agent.set_environment(env)
-    iteration = 0
-    while iteration < max_tick:
-        display(env, agents)
-        # asd = input()
-        if is_terminated(agents):
-            break
-
-        for i in range(len(agents)):
-            manager = Manager([agents[i], agents[not i]])
-            actions_to_perform = manager.starting_minmax()
-            agents[i].act(env)
-            agents[0].set_environment(env)
-            agents[1].set_environment(env)
-        # update the world for every agent
-
-        env.tick()
-        for agent in agents:
-            agent.set_environment(env)
-
-        time.sleep(seconds_per_tick)
-        iteration += 1
-    for agent in agents:
-        print(f"agent {agent.name} has score {agent.score}")
-    display(env, agents)
-
+    env = BayesEnvironment(save_dir)
+    display(env, [])
+    bn = BayesNetwork()
+    bn.construct_bn(env)
+    display_bn(bn.bayesian_graph)
 
 if __name__ == "__main__":
     # Manager = AgentsManager
-    env = BayesEnvironment("test/babyzian/probability_graph1.json")
-    # main("test/adv/all_behaviours_graph.json", 1.55)
-    display(env, [])
+    main("test/babyzian/probability_graph1.json", 1.55)
