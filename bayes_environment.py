@@ -1,6 +1,8 @@
 from environment import *
 from networkx.algorithms.dag import topological_sort
 from networkx.algorithms.simple_paths import all_simple_paths
+import random
+
 
 class BayesEnvironment(Environment):
     def __init__(self, file_name):
@@ -13,7 +15,7 @@ class BayesNetwork:
         self.bayesian_graph = nx.DiGraph()
         # evidence will be of the form "type_name_time": False\True
         # for example: self.evidence["n_1_0"] = False
-        self.sample_num = 100
+        self.sample_num = 10000
         self.vertex_iter = None
 
     def _reset_vertex_iter(self):
@@ -61,7 +63,6 @@ class BayesNetwork:
                 continue
             return [evidence_input, at_time]
 
-
     @staticmethod
     def parse_first_part_of_evidence_input(evidence_input):
         output_list = []
@@ -79,7 +80,6 @@ class BayesNetwork:
                     output_list.append('N')
                     output_list.append(evidence_details_list[1])
         return output_list
-
 
     @staticmethod
     def get_option_from_user(min_number_of_option = 0, number_of_options = 4, message = "Please select an option:"):
@@ -183,7 +183,7 @@ class BayesNetwork:
             at time = 0 return the same probability, twice
         """
         if time == 0:
-            return env.graph.nodes[vertex]["flood_prob"]
+            return [env.graph.nodes[vertex]["flood_prob"]]
         elif time > 0:
             return [  # previous was false, previous was true
                 env.graph.nodes[vertex]["flood_prob"],
@@ -192,17 +192,68 @@ class BayesNetwork:
         else:
             raise ValueError("NO")
 
-    def sample_bn_node(self, bn_node, current_evidences):
+    def sample_bn_node(self, bn_node, evidences):
         """
         given the node from th ebn graph and the known facts, will return true or false.
         :param bn_node: node from self.bn_graph
-        :param current_evidences: dict of facts with keys as bn nodes and values as true or false
+        :param evidences: dict of facts with keys as bn nodes and values as true or false
         :return: True or False. will return None if result contradict facts
         """
-        # if "n" in bn_node:
         #TODO this
-        pass
-        return True
+
+        # generate random number between 0 and 1
+
+        # if time is zero and is a node vertex
+        if "n" in bn_node:
+            if bn_node.split("_")[-1] == "0":
+                result = self.sample_node_time_0(bn_node, evidences)
+
+            # if time is one and is a node vertex
+            elif bn_node.split("_")[-1] == "1":
+                result = self.sample_node_time_1(bn_node, evidences)
+
+        elif "e" in bn_node:
+            result = self.sample_edge(bn_node, evidences)
+
+        return result
+
+    def sample_node_time_0(self, vertex, evidences):
+        random_num = random.uniform(0, 1)
+        if random_num < self.bayesian_graph.nodes[vertex]["prob"][0]:
+            return True
+        else:
+            return False
+
+    def sample_node_time_1(self, vertex, evidences):
+        random_num = random.uniform(0, 1)
+        parent_bool_value = 1 if evidences[vertex[:-1] + "0"] else 0
+
+        if random_num < self.bayesian_graph.nodes[vertex]["prob"][parent_bool_value]:
+            return True
+        else:
+            return False
+
+    def sample_edge(self, vertex, evidences):
+        random_num = random.uniform(0, 1)
+        adj_nodes = vertex.split("_")[1][1:-1].split(", ")  # splits from the bn_vertex name the neighbor nodes
+        time = vertex[-1]
+
+        node_1_value = evidences[f"n_{adj_nodes[0]}_{time}"]
+        node_2_value = evidences[f"n_{adj_nodes[1]}_{time}"]
+
+        if node_1_value == False and node_2_value == False:
+            prob_index = 0
+        elif node_1_value == True and node_2_value == False:
+            prob_index = 1
+        elif node_1_value == False and node_2_value == True:
+            prob_index = 2
+        else:
+            prob_index = 3
+
+        if random_num < self.bayesian_graph.nodes[vertex]["prob"][prob_index]:
+            return True
+        else:
+            return False
 
     def sample_bn(self, evidences):
         """
@@ -278,17 +329,26 @@ class BayesNetwork:
 
             # if one edge is blocked the whole path is blocked
             for bn_edge_vertex in edge_list_bn_nodes:
-                if sample[bn_edge_vertex]:
-                    continue
+                try:
+                    if sample[bn_edge_vertex]:
+                        good_samples -= 1
+                        break
+                except KeyError:
+                    adj_nodes = bn_edge_vertex.split("_")[1][1:-1].split(", ")
+                    inverse_bn_vertex = f"e_({adj_nodes[-1]}, {adj_nodes[0]})_{bn_edge_vertex[-1]}"
+                    if sample[inverse_bn_vertex]:
+                        good_samples -= 1
+                        break
+
             good_samples += 1
 
         return good_samples / self.sample_num
 
-    def find_best_prob_graph(self, source, target, time, evidences):
+    def find_best_prob_graph(self, env, source, target, time, evidences):
 
         # get all simple paths
         edges_path_lists = []
-        nodes_paths_gen = all_simple_paths(self.bayesian_graph, source, target)
+        nodes_paths_gen = all_simple_paths(env.graph, source, target)
         for nodes_path in nodes_paths_gen:
 
             # convert to a list of edges
@@ -301,4 +361,5 @@ class BayesNetwork:
         for path in edges_path_lists:
             path_probs.append(self.prob_path_not_blocked(path, time, evidences))
 
-        return max(path_probs)
+        max_prob = max(path_probs)
+        return edges_path_lists[path_probs.index(max_prob)]
