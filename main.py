@@ -78,9 +78,9 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
     bn = BayesNetwork()
     bn.construct_bn(env)
     # display_bn(bn.bayesian_graph)
-
     # print(bn.prob_bn_node("e_(2, 3)_0", {}))
-    print(bn.prob_path_not_blocked([(1,2),(2,4),(4,3)], 0 , {}))
+    # print(bn.prob_path_not_blocked([(1, 2), (2, 4), (4,3)], 0, {}))
+    bn.user_input()
     # print(bn.find_best_prob_graph(env, 1, 4, 0, {"e_(3, 4)_0": False}))# TODO this bug
     # bn.get_evidence()
 

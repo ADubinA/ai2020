@@ -3,11 +3,18 @@ from networkx.algorithms.dag import topological_sort
 from networkx.algorithms.simple_paths import all_simple_paths
 import random
 
+SAMPLES_NUM = 4000
 
 class BayesEnvironment(Environment):
     def __init__(self, file_name):
         super(BayesEnvironment, self).__init__(file_name)
         self.persistence = 0.7
+
+    def get_number_of_vertexes(self):
+        return self.graph.number_of_nodes()
+
+    def get_number_of_edges(self):
+        return self.graph.edges()
 
 
 class BayesNetwork:
@@ -15,8 +22,10 @@ class BayesNetwork:
         self.bayesian_graph = nx.DiGraph()
         # evidence will be of the form "type_name_time": False\True
         # for example: self.evidence["n_1_0"] = False
-        self.sample_num = 10000
+        self.sample_num = SAMPLES_NUM
         self.vertex_iter = None
+        self.evidences = {}
+        self.environment = None
 
     def _reset_vertex_iter(self):
         self.vertex_iter = topological_sort(self.bayesian_graph)
@@ -24,80 +33,6 @@ class BayesNetwork:
     # def _get_node_by_hierarchy(self):
     #     return next(self.vertex_iter)
 
-    @staticmethod
-    def get_evidence(display_message = True):
-        """
-        ------------NOTE------------
-        Doesn't support nodes that their name include more than a single digit.
-        Hence, a node called 12 won't be parsed.
-        ------------NOTE------------
-
-        :param display_message:
-        :return[List, int], the first element signifying the details of the evidence, the second is the time:
-        """
-        edge_specifier = None
-        vertex_specifier = None
-        evidence_input = None
-        at_time = -1
-        print("Please type evidence:")
-        if (display_message):
-           print("Use the following format: \"E#num-#num #time\" or \"N#num #time\"")
-           print("For example: \"E3-4 2\" to signify the edge between node 3 and node 4 during time 2")
-           print("Or \"N1 7\" to signify the vertex N1 at time 7")
-        while True:
-            number_of_args = 23789
-            while number_of_args != 2:
-                user_input = input()
-                arg_list = user_input.split(" ")
-                print(arg_list)
-                number_of_args = len(arg_list)
-                if (number_of_args != 2):
-                    print("Illegal number of arguments. Please try again")
-            if not arg_list[1].isdigit() and arg_list[1] < 0:
-                print("Illegal time value. Please try again.")
-                continue
-            at_time = arg_list[1]
-            evidence_input = BayesNetwork.parse_first_part_of_evidence_input(arg_list[0])
-            if (len(evidence_input)) == 0:
-                print("Bad edge/node input. Please try again.")
-                continue
-            return [evidence_input, at_time]
-
-    @staticmethod
-    def parse_first_part_of_evidence_input(evidence_input):
-        output_list = []
-        evidence_details_list = list(evidence_input)
-        if (evidence_details_list[0] == 'E'):
-            if len(evidence_details_list) == 4:
-                if evidence_details_list[1].isdigit() and evidence_details_list[3].isdigit():
-                    output_list.append('E')
-                    output_list.append(evidence_details_list[1])
-                    output_list.append(evidence_details_list[3])
-
-        elif (evidence_details_list[0] == 'N'):
-            if len(evidence_details_list) == 2:
-                if evidence_details_list[1].isdigit():
-                    output_list.append('N')
-                    output_list.append(evidence_details_list[1])
-        return output_list
-
-    @staticmethod
-    def get_option_from_user(min_number_of_option = 0, number_of_options = 4, message = "Please select an option:"):
-        """
-        What is the probability that each of the vertices is flooded?
-        What is the probability that each of the edges is blocked?
-        What is the probability that a certain path (set of edges) is free from blockages? (Note that the distributions of blockages in edges are NOT necessarily independent.)
-        :param number_of_options:
-        :returns: an integer signifying the option selected
-        """
-        while True:
-            option_selected = input(message)
-            if not option_selected.isdigit():
-                print("No number argument detected. Please try again")
-            option_num = int(option_selected)
-            if option_num > number_of_options or option_num < min_number_of_option:
-                print("Option number not in range. Please try again")
-            return option_num
 
     def construct_bn(self, env):
         """
@@ -107,6 +42,7 @@ class BayesNetwork:
         :return: None
         """
         # will add every node from the env graph to a vertex in the bn
+        self.environment = env
         for node in env.graph.nodes:
             bn_name_zero = f"n_{node}_0" #
             bn_name_one = f"n_{node}_1"
@@ -363,3 +299,163 @@ class BayesNetwork:
 
         max_prob = max(path_probs)
         return edges_path_lists[path_probs.index(max_prob)]
+
+    @staticmethod
+    def get_evidence(display_message=True):
+        """
+        ------------NOTE------------
+        Doesn't support nodes that their name include more than a single digit.
+        Hence, a node called 12 won't be parsed.
+        ------------NOTE------------
+
+        :param display_message:
+        :return[List, int], the first element signifying the details of the evidence, the second is the time:
+        """
+        edge_specifier = None
+        vertex_specifier = None
+        evidence_input = None
+        at_time = -1
+        print("Please type evidence:")
+        if (display_message):
+            print("Use the following format: \"E#num-#num #time\" or \"N#num #time\"")
+            print("For example: \"E3-4 2 t\" to signify the edge between node 3 and node 4 during time 2 is blocked")
+            print("Or \"N1 7 f \" to signify the vertex N1 at time 7 is unflooded")
+        while True:
+            number_of_args = 23789
+            while number_of_args != 3:
+                user_input = input()
+                arg_list = user_input.split(" ")
+                number_of_args = len(arg_list)
+                if (number_of_args != 3):
+                    print("Illegal number of arguments. Please try again")
+            if not arg_list[1].isdigit() and arg_list[1] < 0:
+                print("Illegal time value. Please try again.")
+                continue
+            if (not arg_list[2].lower() == 'f') and (not arg_list[2].lower() == 't'):
+                print("Illegal boolean value. Please try again")
+                continue
+            if arg_list[2].lower() == 'f':
+                value = False
+            else:
+                value = True
+            at_time = arg_list[1]
+            evidence_input = BayesNetwork.parse_first_part_of_evidence_input(arg_list[0])
+            if (len(evidence_input)) == 0:
+                print("Bad edge/node input. Please try again.")
+                continue
+            return [evidence_input, at_time, value]
+
+    @staticmethod
+    def parse_first_part_of_evidence_input(evidence_input):
+        output_list = []
+        evidence_details_list = list(evidence_input)
+        if (evidence_details_list[0].lower() == 'e'):
+            if len(evidence_details_list) == 4:
+                if evidence_details_list[1].isdigit() and evidence_details_list[3].isdigit():
+                    output_list.append('E')
+                    output_list.append(evidence_details_list[1])
+                    output_list.append(evidence_details_list[3])
+
+        elif (evidence_details_list[0].lower() == 'n'):
+            if len(evidence_details_list) == 2:
+                if evidence_details_list[1].isdigit():
+                    output_list.append('N')
+                    output_list.append(evidence_details_list[1])
+        return output_list
+
+    @staticmethod
+    def get_option_from_user(min_number_of_option=0, number_of_options=4, message="Please select an option: "):
+        """
+        What is the probability that each of the vertices is flooded?
+        What is the probability that each of the edges is blocked?
+        What is the probability that a certain path (set of edges) is free from blockages? (Note that the distributions of blockages in edges are NOT necessarily independent.)
+        :param number_of_options:
+        :returns: an integer signifying the option selected
+        """
+        while True:
+            option_selected = input(message)
+            if not option_selected.isdigit():
+                print("No number argument detected. Please try again")
+                continue
+            option_num = int(option_selected)
+            if option_num > number_of_options or option_num < min_number_of_option:
+                print("Option number not in range. Please try again")
+                continue
+            return option_num
+
+    def add_evidence(self, evidence):
+        edge_or_vertex_list = evidence[0]
+        time_of_evidence = evidence[1]
+        new_evidence_string = ""
+        if edge_or_vertex_list[0].lower() == 'n':
+            new_evidence_string = f"n_{edge_or_vertex_list[1]}_{time_of_evidence}"
+        elif edge_or_vertex_list[0].lower() == 'e':
+            new_evidence_string = f"e_({edge_or_vertex_list[1]}, {edge_or_vertex_list[2]})_{time_of_evidence}"
+        else:
+            raise ValueError("I SAID NO")
+        print(f"new evidence string: {new_evidence_string} value is: {evidence[2]}")
+        self.evidences[new_evidence_string] = evidence[2]
+
+    def print_all_vertexes(self):
+        print("Note that we are calculating the probability that a node is FLOODED!")
+        for time in range(0, 2):
+            number_of_vertexes = self.environment.get_number_of_vertexes()
+            for curr_vertex in range (1, number_of_vertexes + 1):
+                vertex_string = f"n_{curr_vertex}_{time}"
+                print(f"Probability that node {curr_vertex} in time {time} is flooded is: {self.prob_bn_node(vertex_string, self.evidences)}")
+
+    def print_all_edges(self):
+        print("Note that we are calculating the probability that an edge is BLOCKED!")
+        for time in range(0, 2):
+            edges = self.environment.get_number_of_edges()
+            print(f"All edges in time slice: {time}")
+            for edge in edges:
+                # ="e_(2, 3)_0"
+                edge_string = f"e_{edge}_{time}"
+                print(f"Probability that edge {edge} in time {time} is flooded is: {self.prob_bn_node(edge_string, self.evidences)}")
+
+
+    @staticmethod
+    def get_path_from_user():
+        print("Please input a path from the user")
+        pass
+
+    def calculate_path_is_clear(self, path):
+        print("Please input a path from the user")
+        pass
+
+    def user_input(self):
+        while (True):
+            print("Please select an option: ")
+            print("1: Add evidence")
+            print("2: Clear evidence list")
+            print("3: Probability that each vertex is blocked")
+            print("4: Probability that each edge is blocked")
+            print("5: Probability that a given path is open")
+            print("6: Probability of the best path between 2 vertices")
+            print("7: Exit")
+
+
+            option_num = BayesNetwork.get_option_from_user(1, 7)
+            if option_num == 1:
+                new_evidence = BayesNetwork.get_evidence()
+                self.add_evidence(new_evidence)
+                print("Added new evidence.")
+                print(f"New evidence list: {self.evidences}")
+            elif option_num == 2:
+                print(f"Previous evidence list: {self.evidences}")
+                self.evidences = []
+                print(f"New and clean evidence list: {self.evidences}")
+            elif option_num == 3:
+                self.print_all_vertexes()
+            elif option_num == 4:
+                self.print_all_edges()
+            elif option_num == 5:
+                user_path = BayesNetwork.get_path_from_user()
+                self.calculate_path_is_clear(user_path)
+            elif option_num == 6:
+                pass
+            elif option_num == 7:
+                break
+        print("Thank for testing our bayesian network!")
+        print("Have a lovely day.")
