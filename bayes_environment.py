@@ -1,14 +1,26 @@
 from environment import *
+from networkx.algorithms.dag import topological_sort
+from networkx.algorithms.simple_paths import all_simple_paths
 
 class BayesEnvironment(Environment):
     def __init__(self, file_name):
         super(BayesEnvironment, self).__init__(file_name)
         self.persistence = 0.7
 
+
 class BayesNetwork:
     def __init__(self):
         self.bayesian_graph = nx.DiGraph()
+        # evidence will be of the form "type_name_time": False\True
+        # for example: self.evidence["n_1_0"] = False
+        self.sample_num = 100
+        self.vertex_iter = None
 
+    def _reset_vertex_iter(self):
+        self.vertex_iter = topological_sort(self.bayesian_graph)
+    #
+    # def _get_node_by_hierarchy(self):
+    #     return next(self.vertex_iter)
 
     @staticmethod
     def get_evidence(display_message = True):
@@ -115,6 +127,7 @@ class BayesNetwork:
                 self.bayesian_graph.add_edge(bn_edge_parent2, bn_edge_name)
 
         self._calculate_conditional(env)
+        self._reset_vertex_iter()
 
     def _calculate_conditional(self, env):
         """
@@ -134,14 +147,13 @@ class BayesNetwork:
                 self.bayesian_graph.nodes[bn_node_name]["prob"] =\
                     self._init_prob_edge(edge, env, time)
 
-
     def _init_prob_edge(self, edge, env, time):
         """
         will calculate the probability that a given edge is blocked,
         conditioned by the nodes
         :param edge: an edge index
         :param env: you know
-        :return: an array with 4 probabilities (connected node is flooded) as follow:
+        :return: a dictionary with 4 probabilities (connected node is flooded) as follow:
             [
             (false,false),
             (true, false),
@@ -149,7 +161,7 @@ class BayesNetwork:
             (true, true)
             ]
         """
-        edge_prob = 0.6 * 1 / env.graph.edges[edge]["weight"]
+        edge_prob = 0.6 * 1.0 / env.graph.edges[edge]["weight"]
         return [
             0.001,
             edge_prob,
@@ -180,26 +192,113 @@ class BayesNetwork:
         else:
             raise ValueError("NO")
 
-    def prob_vertex_flooded(self, vertex, time):
+    def sample_bn_node(self, bn_node, current_evidences):
         """
-        will use bayesian inference on the tree to calculate the probability that
-        at time time, the vertex will be flooded
-        :param vertex: vertex index
-        :param time: time (0 or 1)
+        given the node from th ebn graph and the known facts, will return true or false.
+        :param bn_node: node from self.bn_graph
+        :param current_evidences: dict of facts with keys as bn nodes and values as true or false
+        :return: True or False. will return None if result contradict facts
+        """
+        # if "n" in bn_node:
+        #TODO this
+        pass
+        return True
+
+    def sample_bn(self, evidences):
+        """
+        will sample the bn graph in topological order.
+        will reset before every run the iterator
+        :param evidences: dictionary with bn vertexes names and True\False values
+        :return: dictionary of a sampling result. will return an empty sample
+        """
+        self._reset_vertex_iter()
+        current_evidences = dict(evidences)
+        samples = {}
+
+        # in topological order, start a random sampling
+        for current_vertex in self.vertex_iter:
+            samples[current_vertex] = self.sample_bn_node(current_vertex, current_evidences)
+
+            # if sample contradict fact break. else add to evidence dict
+            if samples[current_vertex] != current_evidences.get(current_vertex, samples[current_vertex]):
+                samples = {}
+                break
+            else:
+                current_evidences[current_vertex] = samples[current_vertex]
+
+        return samples
+
+    def prob_bn_node(self, bn_vertex, evidences):
+        """
+        will use bayesian sampling on the tree to calculate the probability that
+        the vertex condition is true.
+        For graph nodes is the probability of been flooded
+        For graph edges is the probability of been blocked
+        :param bn_vertex: name of the vertex in the bn graph
+        :param evidences: evidences that are true always
         :return: (float) the probability
         """
-        pass
 
-    def prob_edge_blocked(self, edge, time):
+        # init the sample loop
+        sample_i = 0
+        good_samples = 0  # number of times vertex is indeed flooded
+        while sample_i < self.sample_num:
+
+            sample = self.sample_bn(evidences)
+            if len(sample) == 0:
+                continue
+
+            sample_i += 1
+            if sample.get(bn_vertex, False):
+                good_samples += 1
+
+        return good_samples/self.sample_num
+
+    def prob_path_not_blocked(self, edge_list, time, evidences):
         """
-        will use bayesian inference on the tree to calculate the probability that
-        at time time, the edge will be block
 
-        :param edge: edge index
-        :param time: time (0 or 1)
-        :return: (float) the probability
+        will use bayesian sampling on the tree to calculate the probability that
+        the
+        :param edge_list: a list of edges of the form (i,j) where i,j is a graph name
+        :param time: time of calculation
+        :param evidences: dict of evidences that are true always. keys are bn_vertex names
+        :return:
         """
-        pass
+        # init the sample loop
+        sample_i = 0
+        edge_list_bn_nodes = [f"e_{edge}_{time}" for edge in edge_list]
+        good_samples = 0  # number of times vertex is indeed flooded
+        while sample_i < self.sample_num:
 
-    def prob_path_ok(self, vertex_path):
-        pass
+            sample = self.sample_bn(evidences)
+            if len(sample) == 0:
+                continue
+
+            sample_i += 1
+
+            # if one edge is blocked the whole path is blocked
+            for bn_edge_vertex in edge_list_bn_nodes:
+                if sample[bn_edge_vertex]:
+                    continue
+            good_samples += 1
+
+        return good_samples / self.sample_num
+
+    def find_best_prob_graph(self, source, target, time, evidences):
+
+        # get all simple paths
+        edges_path_lists = []
+        nodes_paths_gen = all_simple_paths(self.bayesian_graph, source, target)
+        for nodes_path in nodes_paths_gen:
+
+            # convert to a list of edges
+            new_path = []
+            for i in range(len(nodes_path) - 1):
+                new_path.append((nodes_path[i], nodes_path[i+1]))
+            edges_path_lists.append(new_path)
+
+        path_probs = []
+        for path in edges_path_lists:
+            path_probs.append(self.prob_path_not_blocked(path, time, evidences))
+
+        return max(path_probs)

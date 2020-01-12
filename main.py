@@ -53,7 +53,7 @@ def display_bn(bn_graph):
 
     # draw the rest of the graph
     ax.margins(0.4, 0.4)
-    nx.draw(bn_graph, pos, with_labels=True, font_weight='bold', arrowsize=20)
+    nx.draw(bn_graph, pos, with_labels=True, font_weight='bold', arrowsize=20, font_size=8 )
     plt.show()
 
 def main(save_dir, seconds_per_tick, max_tick=1000):
@@ -61,9 +61,9 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
     env = BayesEnvironment(save_dir)
     # display(env, [])
     bn = BayesNetwork()
-
-    bn.get_evidence()
-    # bn.construct_bn(env)
+    bn.construct_bn(env)
+    pass
+    # bn.get_evidence()
     # display_bn(bn.bayesian_graph)
 
 if __name__ == "__main__":
