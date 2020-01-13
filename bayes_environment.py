@@ -433,10 +433,11 @@ class BayesNetwork:
             print("4: Probability that each edge is blocked")
             print("5: Probability that a given path is open")
             print("6: Probability of the best path between 2 vertices")
-            print("7: Exit")
+            print("7: Update number of samples.")
+            print("8: Exit")
 
 
-            option_num = BayesNetwork.get_option_from_user(1, 7)
+            option_num = BayesNetwork.get_option_from_user(1, 8)
             if option_num == 1:
                 new_evidence = BayesNetwork.get_evidence()
                 self.add_evidence(new_evidence)
@@ -444,7 +445,7 @@ class BayesNetwork:
                 print(f"New evidence list: {self.evidences}")
             elif option_num == 2:
                 print(f"Previous evidence list: {self.evidences}")
-                self.evidences = []
+                self.evidences = {}
                 print(f"New and clean evidence list: {self.evidences}")
             elif option_num == 3:
                 self.print_all_vertexes()
@@ -456,6 +457,15 @@ class BayesNetwork:
             elif option_num == 6:
                 pass
             elif option_num == 7:
+                print(f"Current number of samples: {self.sample_num}")
+                new_num_of_samples = input("Please type the new number of samples: ")
+                if not new_num_of_samples.isdigit():
+                    print(f"Error! {new_num_of_samples} is not a number.")
+                elif int(new_num_of_samples) < 1:
+                    print(f"Error! {new_num_of_samples} must be positive")
+                self.sample_num = int(new_num_of_samples)
+                print(f"new number of samples is: {self.sample_num}")
+            elif option_num == 8:
                 break
         print("Thank for testing our bayesian network!")
         print("Have a lovely day.")
