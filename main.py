@@ -73,7 +73,7 @@ def printer():
 def main(save_dir, seconds_per_tick, max_tick=1000):
 
     env = BayesEnvironment(save_dir)
-    # display(env, [])
+    display(env, [])
 
     bn = BayesNetwork()
     bn.construct_bn(env)

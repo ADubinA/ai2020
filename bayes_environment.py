@@ -415,14 +415,39 @@ class BayesNetwork:
                 print(f"Probability that edge {edge} in time {time} is flooded is: {self.prob_bn_node(edge_string, self.evidences)}")
 
 
+
     @staticmethod
     def get_path_from_user():
-        print("Please input a path from the user")
-        pass
+        print("Please input a path at the following format: 1-2-3-4 signifies the path\n"
+              "The path from vertex 1, to 2, to 3, to 4")
+        while True:
+            possible_path = input()
+            possible_path = possible_path.split("-")
+            for item in possible_path:
+                if (len(item) > 1):
+                    print("Try again")
+                    continue
+            break
+        # print(bn.prob_path_not_blocked([(1, 2), (2, 4), (4,3)], 0, {}))
+        list_without_start = possible_path[1:]
+        list_without_end = possible_path[:-1]
+        path_list_zipped = zip(list_without_end, list_without_start)
+        path_list = []
+        for item in path_list_zipped:
+            new_pair = (int(item[0]), int(item[1]))
+            path_list.append(new_pair)
+        print(path_list)
+        return path_list
 
-    def calculate_path_is_clear(self, path):
-        print("Please input a path from the user")
-        pass
+    @staticmethod
+    def get_time():
+        while (True):
+            possible_time = input("Please type a time to refer to: ")
+            if not possible_time.isdigit() or int(possible_time) < 0:
+                print("Bad input, try again")
+                continue
+            break
+        return int(possible_time)
 
     def user_input(self):
         while (True):
@@ -453,8 +478,12 @@ class BayesNetwork:
                 self.print_all_edges()
             elif option_num == 5:
                 user_path = BayesNetwork.get_path_from_user()
-                self.calculate_path_is_clear(user_path)
+                time_for_path = BayesNetwork.get_time()
+                print(self.prob_path_not_blocked(user_path, time_for_path, self.evidences))
             elif option_num == 6:
+                # path_requested_by_user = BayesNetwork.get_path_from_user()
+                #
+                # self.calculate_path_is_clear(path_requested_by_user, time_for_path)
                 pass
             elif option_num == 7:
                 print(f"Current number of samples: {self.sample_num}")
