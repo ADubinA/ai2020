@@ -256,7 +256,6 @@ class BayesNetwork:
         edge_list_bn_nodes = [f"e_{edge}_{time}" for edge in edge_list]
         good_samples = 0  # number of times vertex is indeed flooded
         while sample_i < self.sample_num:
-
             sample = self.sample_bn(evidences)
             if len(sample) == 0:
                 continue
@@ -481,10 +480,10 @@ class BayesNetwork:
                 time_for_path = BayesNetwork.get_time()
                 print(self.prob_path_not_blocked(user_path, time_for_path, self.evidences))
             elif option_num == 6:
-                # path_requested_by_user = BayesNetwork.get_path_from_user()
-                #
-                # self.calculate_path_is_clear(path_requested_by_user, time_for_path)
-                pass
+                source = int(input("Please type source"))
+                destination = int(input("Please type destination"))
+                time = int(input("Please type time"))
+                print(self.find_best_prob_graph(self.environment, source, destination, time, self.evidences))
             elif option_num == 7:
                 print(f"Current number of samples: {self.sample_num}")
                 new_num_of_samples = input("Please type the new number of samples: ")
