@@ -1,9 +1,9 @@
 import time
 from bayes_environment import *
-from ai_multi_agent import *
+from pomdp_agent import  *
 import networkx as nx
 import matplotlib.pyplot as plt
-from tools.tools import *
+
 
 def display(env,agents, save_dir=None):
     """                                                                                                                                                                                                                     z
@@ -29,10 +29,10 @@ def display(env,agents, save_dir=None):
                                  node_size=100,
                                  label_pos=0.3)
 
-    # env.print_node_data(pos, "people", 1)
-    # env.print_node_data(pos, "shelter", 2)
-    # env.print_node_data(pos, "deadline", 3)
-    env.print_node_data(pos, "flooded", 1)
+    env.print_node_data(pos, "people", 1)
+    env.print_node_data(pos, "shelter", 2)
+    env.print_node_data(pos, "deadline", 3)
+    # env.print_node_data(pos, "flooded", 1)
     env.print_node_data(pos, "flood_prob", 2)
 
     # draw the rest of the graph
@@ -73,17 +73,12 @@ def printer():
 def main(save_dir, seconds_per_tick, max_tick=1000):
 
     env = BayesEnvironment(save_dir)
-    display(env, [])
-
-    bn = BayesNetwork()
-    bn.construct_bn(env)
-    # display_bn(bn.bayesian_graph)
-    # print(bn.prob_bn_node("e_(2, 3)_0", {}))
-    # print(bn.prob_path_not_blocked([(1, 2), (2, 4), (4,3)], 0, {}))
-    bn.user_input()
-    # print(bn.find_best_prob_graph(env, 1, 4, 0, {"e_(3, 4)_0": False}))# TODO this bug
-    # bn.get_evidence()
+    agent = PomdpAgent("A1", 1)
+    agent.set_environment(env)
+    display(env, [agent])
+    am = AgentsManager(agent)
+    am.generate_tree()
 
 if __name__ == "__main__":
     # Manager = AgentsManager
-    main("test/babyzian/probability_graph1.json", 1.55)
+    main("test/babyzian/pomdp_graph1.json", 1.55)

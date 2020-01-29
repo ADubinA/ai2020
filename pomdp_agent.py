@@ -34,13 +34,16 @@ class AgentsManager:
 
     def generate_tree(self):
         """"""
+        print("if you see this twice, dont.")
         # init the graph with the first node (agent at starting point)
         self.tree.add_node(next(self.node_name_gen), agent=self.agent,
                            score=None, node_type="action")
         self._rec_generate_tree(0)
+        self._calculate_nodes_score()
+        print_pomdp_tree(self.tree)
 
     def _rec_generate_tree(self, node_index):
-        print("if you see this twice, dont.")
+
         """
         generate the self.tree that contain all to possible policies.
         this function will not calculate the score for each policy.
@@ -52,19 +55,20 @@ class AgentsManager:
             in each node is the agent, representing the state."""
 
         # get all world options if there is a probability split
-        available_probabalistic_options = self.find_availble_probabalistic_options(node_index)
+        available_probabalistic_options, probs = self.find_availble_probabalistic_options(node_index)
 
-        # if number of options is greater then 1?, add  split node
-        current_agent = self.tree.nodes[node_index]["agent"]
-        decision_node_index = next(self.node_name_gen)
-        self.tree.add_node(decision_node_index, agent=current_agent, score=None, node_type="decision")
-        self.tree.add_edge(node_index, decision_node_index)
+
 
         # for every probability split
-        for option in available_probabalistic_options:
+        for i in range(len(available_probabalistic_options)):
+            # if number of options is greater then 1?, add  split node
+            current_agent = self.tree.nodes[node_index]["agent"]
+            decision_node_index = next(self.node_name_gen)
+            self.tree.add_node(decision_node_index, agent=current_agent, score=None, node_type="decision")
+            self.tree.add_edge(node_index, decision_node_index, prob=probs[i])
 
             # calculate all possible actions for option
-            acted_agents = self.find_options(option)
+            acted_agents = self.find_options(available_probabalistic_options[i])
 
             # add acted agents to tree
             for acted_agent in acted_agents:
@@ -75,14 +79,55 @@ class AgentsManager:
                 # call recursion for each nodes
                 self._rec_generate_tree(acted_agent_index)
 
-    # def calculate_nodes_score():
+    def calculate_state_prob(self,edge_dict):
+        """
+        givin a dict of "state" will return the probability of the state
+        :param edge_dict: dictionary where keys are edges and values are True or False
+                          given by the state.
+        :return: (float) the probability
+        """
+        prob = 1
+        for edge, is_blocked in edge_dict.items():
+            edge_prob = self.agent.local_environment.graph.edges[edge]["blocked_prob"]
+
+            if not is_blocked:
+                edge_prob = 1-edge_prob
+
+            prob *= edge_prob
+        return prob
+
+    def _calculate_nodes_score(self):
 
         # sort by topological order and invert it
+        reversed_topo_node_list = list(reversed(list(nx.topological_sort(self.tree))))
+        for node_index in reversed_topo_node_list:
+            current_node = self.tree.nodes[node_index]
+
+            # if leaf calculate results
+            if self.tree.out_degree(node_index) == 0:
+                current_node["score"] = current_node["agent"].people_saved
+
+            # if node is a max node:
+            elif current_node["node_type"] == "decision":
+                children = list(self.tree.neighbors(node_index))
+                current_node["score"] = max([self.tree.nodes[child]["score"] for child in children])
+
+            # if node is probability
+            else:
+                children = list(self.tree.neighbors(node_index))
+                score = 0
+                for child in children:
+                    score += self.tree.edges[(node_index, child)]["prob"] * self.tree.nodes[child]["score"]
+                current_node["score"] = score
+
+
+
 
         # do single value iteration
 
 
-    # def calculate_optimal_plan():
+    def _calculate_optimal_plan(self):
+        pass
         # do greedy path on the tree
 
     def find_availble_probabalistic_options(self, node_index):
@@ -92,26 +137,34 @@ class AgentsManager:
         """
         # get all the neighboring edges
         current_agent = self.tree.nodes[node_index]["agent"]
-        available_edges = current_agent.local_environment.graph.edges(node_index)
+        available_edges = current_agent.local_environment.graph.edges(current_agent.location)
 
         # find edges that have probability in them
         probalistic_edges = [edge for edge in available_edges
-                             if 1 > current_agent.local_environment.graph.edges[edge].get("flood_prob", 0) > 0]
+                             if 1 > current_agent.local_environment.graph.edges[edge].get("blocked_prob", 0) > 0]
 
         # get all possible true false combination
         combo_list = list(itertools.product([False, True], repeat=len(probalistic_edges)))
 
         # create all possible environment
         new_agent_list = []
+        prob_list = []
         for combo in combo_list:
             new_agent = copy.deepcopy(current_agent)
 
-            # set values of every option
+            # Calculate the probability of the state
+            edge_dict = {}
+            for i in range(len(probalistic_edges)):
+                edge_dict[probalistic_edges[i]] = combo[i]
+            prob_list.append(self.calculate_state_prob(edge_dict))
+
+                # set values of every option
             for i in range(len(probalistic_edges)):
                 new_agent.local_environment.graph.edges[probalistic_edges[i]]["blocked"] = combo[i]
+                new_agent.local_environment.graph.edges[probalistic_edges[i]]["blocked_prob"] = combo[i]
 
             new_agent_list.append(new_agent)
-        return new_agent_list
+        return new_agent_list, prob_list
 
     def attach_agents_to_nodes(self, agents_tuple, parent, level):
         # TODO this
@@ -166,7 +219,7 @@ class AgentsManager:
 
         # In case the agent is dead, return nothing.
         if agent.active_state == "terminated":
-            return None
+            return []
 
         available_options = []
 
@@ -178,11 +231,11 @@ class AgentsManager:
             dest_deadline = agent.local_environment.get_node_deadline(neighbor)
             curr_time = agent.curr_time()
             traversal_time = agent.local_environment.graph.edges[agent.location, neighbor]["weight"]
-            if dest_deadline > curr_time + traversal_time:
+            if dest_deadline < curr_time + traversal_time:
                 continue #The option is not reachable.
 
             #The edge to that neighbhor is blocked
-            if agent.local_environment.edges[agent.location, neighbor]["blocked"]:
+            if agent.local_environment.graph.edges[agent.location, neighbor]["blocked"]:
                 continue
 
             #Meaning the deadline isn't breached, time to perform logic.

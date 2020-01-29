@@ -108,11 +108,10 @@ def covert_local_to_global_tree(root):
     return G
 
 
-DEBUG = True
-RATIO = 2
+DEBUG = False
 
 
-def print_decision_tree(tree):
+def print_minmax_decision_tree(tree):
     """
     will print the tree for the use of AgentsManager
     """
@@ -167,6 +166,55 @@ def print_decision_tree(tree):
     decider = tree.nodes[0]["agents"][0]
     plt.title("Current decider is {}".format(decider))
     plt.show()
+
+RATIO = 8
+
+def print_pomdp_tree(tree):
+    """
+    will print the tree for the use of AgentsManager
+    """
+    NODE_SIZE = 100
+
+    G = tree
+
+    for node in G.nodes:
+        G.nodes[node]["loc"] = G.nodes[node]["agent"].location
+    pos = hierarchy_pos(G, 0, width=RATIO * math.pi, xcenter=0)
+
+    # print graph
+    node_number_size = 0
+    if DEBUG:
+        node_number_size = 12
+    nx.draw(G, pos=pos, node_size=10, labels=None, font_size=node_number_size)
+
+    # print A1 nodes
+    a1_node_list = [node for node in G.nodes if G.nodes[node]["node_type"] == "action"]
+    nx.draw_networkx_nodes(G, pos=pos, nodelist=a1_node_list, node_color='green',
+                           node_size=NODE_SIZE, labels=None, font_size=1)
+    # print A2 nodes
+
+    a2_node_list = [node for node in G.nodes if G.nodes[node]["node_type"] == "decision"]
+    nx.draw_networkx_nodes(G, pos=pos, nodelist=a2_node_list, node_color='yellow', node_size=NODE_SIZE,
+                           labels=None, font_size=1)
+
+    terminated_list = [node for node in G.nodes if
+                       G.nodes[node]["agent"].active_state == "terminated"]
+    nx.draw_networkx_nodes(G, pos=pos, nodelist=terminated_list, node_color='red', node_size=NODE_SIZE/2,
+                           labels=None, font_size=1)
+    # nx.draw_networkx_labels(self.graph, pos_attrs, labels=custom_node_attrs, font_size=8)
+
+    edge_labels = dict([((u, v,), d['prob']) for u, v, d in G.edges(data=True) if "prob" in d])
+    nx.draw_networkx_edge_labels(G, pos,
+                                 edge_labels=edge_labels,
+                                 node_size=100,
+                                 label_pos=0.3)
+
+
+    label_printer(G, pos, "loc", RATIO)
+    label_printer(G, pos, "score", RATIO*2)
+
+    plt.show()
+
 
 def label_printer(G, pos, dict_key, spacing=1):
     pos_attrs = {}
