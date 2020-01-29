@@ -145,79 +145,54 @@ class AgentsManager:
     def find_options(self, agent):
         """
         for a given agent will return all possible actions for the agent
-        will return an array of copies of the given agent, after preforming the action.
+        will return an array of copies of the given agent, after performing the action.
 
         """
-        # TODO this
-        raise NotImplemented("AENVKLADFVNADFVLNADFVKLADFNV")
+
+        # In case the agent is dead, return nothing.
+        if agent.active_state == "terminated":
+            return None
+
         available_options = []
 
-        if agent.active_state == "traversing":
-            if agent.location != agent.destination:
-                available_options.append(self._option_keep_traversing(agent))
+        #Get all accessable neighbhors.
+        local_neighborhood = agent.local_environment.get_node_neighborhood(agent.location)
 
-            else:
-                available_options = self._option_arriving_at_destination(agent)
-                available_options.append(self._option_now_terminating(agent))
+        for neighbor in local_neighborhood:
+            #Means the deadline is breached at a certain node.
+            dest_deadline = agent.local_environment.get_node_deadline(neighbor)
+            curr_time = agent.curr_time()
+            traversal_time = agent.local_environment.graph.edges[agent.location, neighbor]["weight"]
+            if dest_deadline > curr_time + traversal_time:
+                continue #The option is not reachable.
 
-        elif agent.active_state == "terminated":
-            available_options.append(self._option_keep_terminated(agent))
-
-        # TODO make sure that after terminated, returns NONE
-        return available_options
-
-    def _simulate_options(self, options):
-        """
-        options is a list of agents
-        will simulate one tick for each of them and return them
-        """
-        # TODO this
-        raise NotImplemented("")
-        for option in options:
-            if option.active_state == "traversing":
-                self._simulate_traversing(option)
-            if option.active_state == "terminated":
-                self._simulate_terminated(option)
-
-        return options
-
-    def _simulate_traversing(self, option):
-        option.time_remaining_to_dest -= 1
-        if option.time_remaining_to_dest <= 0:
-            self._simulate_arrival(option)
-
-    def _simulate_arrival(self, option):
-        option.location = option.destination
-        option._actions_for_arriving_at_node()
-
-    def _simulate_terminated(self, option):
-        pass
-
-    def _option_keep_traversing(self, agent):
-        new_agent = copy.deepcopy(agent)
-        return new_agent
-
-    def _option_keep_terminated(self, agent):
-        new_agent = copy.deepcopy(agent)
-        return new_agent
-
-    def _option_now_terminating(self, agent):
-        new_dead_agent = copy.deepcopy(agent)
-        new_dead_agent.active_state = "terminated"
-        return new_dead_agent
-
-    def _option_arriving_at_destination(self, agent):
-        possible_destinations = []
-        # loop on possible nodes
-        options_graph = agent.local_environment.get_passable_subgraph(agent.curr_time(),
-                                                                     keep_nodes=[agent.location])[agent.location]
-        for option_node, option_data in options_graph.items():
-            if ((agent.curr_time() + option_data["weight"]) >
-                    agent.local_environment.get_node_deadline(option_node)):
+            #The edge to that neighbhor is blocked
+            if agent.local_environment.edges[agent.location, neighbor]["blocked"]:
                 continue
-            # update a new agent
+
+            #Meaning the deadline isn't breached, time to perform logic.
             new_agent = copy.deepcopy(agent)
-            new_agent.destination = option_node
-            new_agent.time_remaining_to_dest = option_data["weight"]
-            possible_destinations.append(new_agent)
-        return possible_destinations
+            new_environment = copy.deepcopy(agent.local_environment)
+
+            #If people are in the neighbhor, pick them up.
+            new_agent.carry_num += new_environment.get_attr(neighbor, "people")  # Pick people up, if they exist.
+            new_environment.change_attr(neighbor, "people", 0)
+
+            #If the given node is a shelter, drop people off.
+            if new_environment.get_attr(neighbor, "shelter") == True:
+                new_agent.people_saved += new_agent.carry_num
+                new_agent.carry_num = 0
+
+            #Update the time for the env.
+            new_environment.time = curr_time + traversal_time
+            new_agent.location = neighbor
+            new_agent.set_environment(new_environment)
+            available_options.append(new_agent)
+
+        #Simulate termination
+        new_agent = copy.deepcopy(agent)
+        new_environment = copy.deepcopy(agent.local_environment)
+        new_agent.active_state = "terminated"
+        new_agent.set_environment(new_environment)
+        available_options.append(new_agent)
+        return available_options
