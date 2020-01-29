@@ -1,5 +1,6 @@
 from ai import *
 import networkx as nx
+import itertools
 from tools.print_tools import *
 MAX_LEVEL = 8
 DEBUG = True
@@ -65,9 +66,6 @@ class AgentsManager:
             # calculate all possible actions for option
             acted_agents = self.find_options(option)
 
-            # simulate the agent for each action
-            self._simulate_options(acted_agents)
-
             # add acted agents to tree
             for acted_agent in acted_agents:
                 acted_agent_index = next(self.node_name_gen)
@@ -92,11 +90,28 @@ class AgentsManager:
         :param node_index: The node from the tree we're deriving options from.
         :return: An array of agents, each contains a deterministic environment
         """
-        available_destinations = self.tree.nodes[node_index]["agent"].local_environment.get_node_neighborhood(node_index)
-        # clear nodes exceeding the deadline
-        # availble_destinations.concat_termination
-        return available_destinations
+        # get all the neighboring edges
+        current_agent = self.tree.nodes[node_index]["agent"]
+        available_edges = current_agent.local_environment.graph.edges(node_index)
 
+        # find edges that have probability in them
+        probalistic_edges = [edge for edge in available_edges
+                             if 1 > current_agent.local_environment.graph.edges[edge].get("flood_prob", 0) > 0]
+
+        # get all possible true false combination
+        combo_list = list(itertools.product([False, True], repeat=len(probalistic_edges)))
+
+        # create all possible environment
+        new_agent_list = []
+        for combo in combo_list:
+            new_agent = copy.deepcopy(current_agent)
+
+            # set values of every option
+            for i in range(len(probalistic_edges)):
+                new_agent.local_environment.graph.edges[probalistic_edges[i]]["blocked"] = combo[i]
+
+            new_agent_list.append(new_agent)
+        return new_agent_list
 
     def attach_agents_to_nodes(self, agents_tuple, parent, level):
         # TODO this
