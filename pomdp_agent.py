@@ -8,7 +8,7 @@ DEBUG = True
 from tools.tools import *
 from itertools import count
 from networkx import DiGraph
-
+import random
 
 class PomdpAgent(LimitedAStarAgent):
     def __init__(self, name, starting_node):
@@ -17,10 +17,37 @@ class PomdpAgent(LimitedAStarAgent):
         # TODO Change the initial state
         self.active_state = "traversing"
 
-    def _act_traversing(self, global_env):
-        self.time_remaining_to_dest -= 1
-        if self.time_remaining_to_dest <= 0:
-            self._actions_for_arriving_at_node()
+    def move_agent_to_location(self, new_location):
+        self.local_environment.time += self.local_environment.graph.edges(self.location, new_location)["weight"]
+        self.location = new_location
+        self.action_in_new_location()
+
+
+    def action_in_new_location(self):
+        """
+        Updates the environment and the agent based on it's current location.
+        :return None:
+        """
+        current_node = self.local_environment.graph.nodes[self.location]
+        self.carry_num += current_node["people"]
+        current_node["people"] = 0
+        if current_node["shelter"]:
+            self.people_saved += self.carry_num
+            self.carry_num = 0
+
+    def observe_immediate_blockages(self):
+        """
+        When in a given location, the agent will check if any of edges adjacent to it's current location
+        are probabalistic. If any of them are, randomize a result and update the environment.
+        :return:
+        """
+        neighboring_edges = self.local_environment.edges(self.location)
+        for edge in neighboring_edges:
+            random_number = random.uniform(0, 1)
+            blockage_probability = self.local_environment.edges[edge]["blocked_prob"]
+            self.local_environment.edges[edge]["blocked"] = random_number < blockage_probability
+
+
 
 class AgentsManager:
 

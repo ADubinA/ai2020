@@ -29,11 +29,18 @@ def display(env,agents, save_dir=None):
                                  node_size=100,
                                  label_pos=0.3)
 
+    edge_labels = dict([((u, v,), "P:" + str(d['blocked_prob'])) for u, v, d in env.graph.edges(data=True)
+                        if 0 < d.get("blocked_prob", 0) < 1])
+    nx.draw_networkx_edge_labels(env.graph, pos,
+                                 edge_labels=edge_labels,
+                                 node_size=100,
+                                 label_pos=0.7)
+
     env.print_node_data(pos, "people", 1)
     env.print_node_data(pos, "shelter", 2)
     env.print_node_data(pos, "deadline", 3)
     # env.print_node_data(pos, "flooded", 1)
-    env.print_node_data(pos, "flood_prob", 2)
+    # env.print_node_data(pos, "flood_prob", 2)
 
     # draw the rest of the graph
     ax.margins(0.4, 0.4)
