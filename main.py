@@ -41,10 +41,10 @@ def display(env,agents, save_dir=None):
     env.print_node_data(pos, "deadline", 3)
     # env.print_node_data(pos, "flooded", 1)
     # env.print_node_data(pos, "flood_prob", 2)
-
+    edge_colors = ["red" if env.graph[u][v]['blocked'] else "black" for u,v in env.graph.edges()]
     # draw the rest of the graph
     ax.margins(0.4, 0.4)
-    nx.draw(env.graph, pos, with_labels=True, font_weight='bold')
+    nx.draw(env.graph, pos, with_labels=True, font_weight='bold', edge_color=edge_colors)
 
     if not save_dir:
         plt.show()
@@ -85,7 +85,21 @@ def main(save_dir, seconds_per_tick, max_tick=1000):
     display(env, [agent])
     am = AgentsManager(agent)
     am.generate_tree()
+    # am.print_tree()
+
+    done = False
+    while not done:
+        agent.policy = am.tree
+        agent.select_action()
+        display(agent.local_environment, [agent])
+        am = AgentsManager(agent)
+        am.generate_tree()
+        done = agent.active_state == "terminated"
+
+    print(f"agent score is {agent.people_saved}")
+
+
 
 if __name__ == "__main__":
     # Manager = AgentsManager
-    main("test/babyzian/pomdp_graph1.json", 1.55)
+    main("test/babyzian/pomdp_graph2.json", 1.55)

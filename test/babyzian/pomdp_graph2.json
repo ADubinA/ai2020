@@ -1,0 +1,73 @@
+{
+  "vertexes":
+          [
+            {
+              "name": 1,
+              "deadline": 7,
+              "shelter": false,
+              "people": 0,
+              "flooded": false
+
+            },
+                        {
+              "name": 2,
+              "deadline": 7,
+              "shelter": false,
+              "people": 0,
+              "flooded": false
+            },
+                        {
+              "name": 3,
+              "deadline": 7,
+              "shelter": false	,
+              "people": 1,
+              "flooded": false
+            },
+                        {
+              "name": 4,
+              "deadline": 7,
+              "shelter": true,
+              "people": 0,
+              "flooded": false
+            }
+          ],
+  "edges":
+  [
+    {
+      "from": 1,
+      "to": 2,
+      "weight": 1,
+      "blocked": false,
+      "blocked_prob": 0.0
+    },
+    {
+      "from": 1,
+      "to": 3,
+      "weight": 4,
+      "blocked": false,
+      "blocked_prob": 0.0
+    },
+    {
+      "from": 2,
+      "to": 3,
+      "weight": 2,
+      "blocked": false,
+      "blocked_prob": 0.1
+    },
+    {
+      "from": 3,
+      "to": 4,
+      "weight": 4,
+      "blocked": false,
+      "blocked_prob": 0.0
+    },
+    {
+      "from": 2,
+      "to": 4,
+      "weight": 1,
+      "blocked": false,
+      "blocked_prob": 0.9
+    }
+
+  ]
+}

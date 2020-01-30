@@ -16,12 +16,13 @@ class PomdpAgent(LimitedAStarAgent):
         self.states["traversing"] = self._act_traversing
         # TODO Change the initial state
         self.active_state = "traversing"
+        self.policy = nx.DiGraph()
 
     def move_agent_to_location(self, new_location):
-        self.local_environment.time += self.local_environment.graph.edges(self.location, new_location)["weight"]
+        self.local_environment.time += self.local_environment.graph.edges[self.location, new_location]["weight"]
+        self.destination = self.location
         self.location = new_location
         self.action_in_new_location()
-
 
     def action_in_new_location(self):
         """
@@ -34,6 +35,7 @@ class PomdpAgent(LimitedAStarAgent):
         if current_node["shelter"]:
             self.people_saved += self.carry_num
             self.carry_num = 0
+        self.observe_immediate_blockages()
 
     def observe_immediate_blockages(self):
         """
@@ -41,11 +43,25 @@ class PomdpAgent(LimitedAStarAgent):
         are probabalistic. If any of them are, randomize a result and update the environment.
         :return:
         """
-        neighboring_edges = self.local_environment.edges(self.location)
+        neighboring_edges = self.local_environment.graph.edges(self.location)
         for edge in neighboring_edges:
             random_number = random.uniform(0, 1)
-            blockage_probability = self.local_environment.edges[edge]["blocked_prob"]
-            self.local_environment.edges[edge]["blocked"] = random_number < blockage_probability
+            blockage_probability = self.local_environment.graph.edges[edge]["blocked_prob"]
+            is_blocked_discovery = random_number < blockage_probability
+            self.local_environment.graph.edges[edge]["blocked"] = is_blocked_discovery
+            self.local_environment.graph.edges[edge]["blocked_prob"] = is_blocked_discovery
+
+    def select_action(self):
+        if "best_child" in self.policy.nodes[1]:
+            best_agent = self.policy.nodes[self.policy.nodes[1]["best_child"]]["agent"]
+            #extract action. if non-terminate, teleport to new location.
+            if best_agent.active_state == "terminated":
+                self.active_state = "terminated"
+            else:
+                self.move_agent_to_location(best_agent.location)
+
+
+
 
 
 
@@ -61,12 +77,14 @@ class AgentsManager:
 
     def generate_tree(self):
         """"""
-        print("if you see this twice, dont.")
         # init the graph with the first node (agent at starting point)
+        self.agent.policy = None
         self.tree.add_node(next(self.node_name_gen), agent=self.agent,
                            score=None, node_type="action")
         self._rec_generate_tree(0)
         self._calculate_nodes_score()
+
+    def print_tree(self):
         print_pomdp_tree(self.tree)
 
     def _rec_generate_tree(self, node_index):
@@ -129,17 +147,24 @@ class AgentsManager:
         reversed_topo_node_list = list(reversed(list(nx.topological_sort(self.tree))))
         for node_index in reversed_topo_node_list:
             current_node = self.tree.nodes[node_index]
-
+            env = current_node["agent"].local_environment
             # if leaf calculate results
             if self.tree.out_degree(node_index) == 0:
                 current_node["score"] = current_node["agent"].people_saved
+                if not env.graph.nodes[current_node["agent"].location]["shelter"]:
+                    current_node["score"] -= K + current_node["agent"].carry_num
 
-            # if node is a max node:
+                    # if node is a max node:
             elif current_node["node_type"] == "decision":
+
                 children = list(self.tree.neighbors(node_index))
                 current_node["score"] = max([self.tree.nodes[child]["score"] for child in children])
 
-            # if node is probability
+                # get the max score index
+                best_node_index = {self.tree.nodes[child]["score"]: child for child in children}[current_node["score"]]
+                current_node["best_child"] = best_node_index
+
+                # if node is probability
             else:
                 children = list(self.tree.neighbors(node_index))
                 score = 0

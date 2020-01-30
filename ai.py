@@ -193,7 +193,7 @@ class Agent:
 
         else:
             weight = self.local_environment.graph.edges[self.location, self.destination]["weight"]
-            if weight > 0:
+            if False: #weight > 1000:
                 xy_from = pos[self.location]
                 xy_to = pos[self.destination]
                 pos_ratio = (weight - self.time_remaining_to_dest) / weight
